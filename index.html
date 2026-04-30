@@ -161,6 +161,23 @@ h1 {
         </label>
       </div>
     </div>
+    <div class="control-row">
+      <label class="control-label">Timing</label>
+      <div class="control-options">
+        <label class="toggle-label">
+          <input type="checkbox" id="smoothLoopCheck" onchange="clearResult(); updateDuration()">
+          <span class="toggle-text">Smooth loop</span>
+        </label>
+        <label class="toggle-label" title="Pause on first frame">
+          <input type="checkbox" id="holdFirstCheck" onchange="clearResult(); updateDuration()">
+          <span class="toggle-text">Hold first</span>
+        </label>
+        <label class="toggle-label" title="Pause on last frame">
+          <input type="checkbox" id="holdLastCheck" onchange="clearResult(); updateDuration()">
+          <span class="toggle-text">Hold last</span>
+        </label>
+      </div>
+    </div>
   </div>
 
   <!-- Action Buttons -->
@@ -554,6 +571,11 @@ function smartDefaults() {
   }
 
   updateDuration();
+
+  // Intelligence: suggest smooth loop for longer sequences
+  if (frames.length >= 5 && !$('smoothLoopCheck').checked) {
+    setTimeout(() => showHint('✦ Try Smooth loop for a seamless cycle'), 4000);
+  }
 }
 
 function deriveFilename() {
@@ -598,7 +620,12 @@ function updateDuration() {
   if (n < 2) { $('durationEst').textContent = ''; return; }
   let frameCount = n;
   if ($('boomerangCheck').checked && n > 2) frameCount = n + (n - 2);
-  const totalMs = frameCount * speed;
+  let totalMs = frameCount * speed;
+  // Account for smooth loop transition frames
+  if ($('smoothLoopCheck').checked && frameCount >= 4) totalMs += 3 * speed;
+  // Account for holds
+  if ($('holdFirstCheck').checked) totalMs += 2 * speed;
+  if ($('holdLastCheck').checked) totalMs += 2 * speed;
   const sec = (totalMs / 1000).toFixed(1);
   $('durationEst').textContent = '~' + sec + 's per loop';
 }
@@ -670,7 +697,7 @@ function removeFrame(idx) {
 }
 
 function clearAll() {
-  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; clearResult(); stopPlay(); updateUI();
 }
 
 function showFrame(idx) {
@@ -913,6 +940,60 @@ function setCustom(key, val, input) {
   showFrame(previewIdx);
 }
 
+
+// ═══════════════════════════════════════════════════════
+// Loop & timing intelligence
+// ═══════════════════════════════════════════════════════
+
+function buildTimingPlan(imgList) {
+  // Returns { images: [...], delays: [...] } with per-frame timing
+  let images = [...imgList];
+  const baseDelay = speed;
+  let delays = images.map(() => baseDelay);
+  const n = images.length;
+
+  // Smooth loop: cross-fade last 2 frames into first 2
+  if ($('smoothLoopCheck').checked && n >= 4) {
+    const blendCanvas = document.createElement('canvas');
+    const blendCtx = blendCanvas.getContext('2d');
+    const w = images[0].naturalWidth || images[0].width;
+    const h = images[0].naturalHeight || images[0].height;
+    blendCanvas.width = w; blendCanvas.height = h;
+
+    // Generate 3 transition frames blending last→first
+    const transitionFrames = [];
+    const steps = 3;
+    for (let s = 1; s <= steps; s++) {
+      const alpha = s / (steps + 1); // 0.25, 0.5, 0.75
+      blendCtx.clearRect(0, 0, w, h);
+      blendCtx.globalAlpha = 1;
+      blendCtx.drawImage(images[n - 1], 0, 0, w, h);
+      blendCtx.globalAlpha = alpha;
+      blendCtx.drawImage(images[0], 0, 0, w, h);
+      // Capture as image
+      const tImg = new Image();
+      tImg.src = blendCanvas.toDataURL();
+      tImg.width = w; tImg.height = h;
+      transitionFrames.push(tImg);
+    }
+    images = images.concat(transitionFrames);
+    delays = delays.concat(transitionFrames.map(() => baseDelay));
+  }
+
+  // Hold first: double the first frame's delay
+  if ($('holdFirstCheck').checked && images.length >= 2) {
+    delays[0] = baseDelay * 3;
+  }
+
+  // Hold last: double the last original frame's delay
+  if ($('holdLastCheck').checked && images.length >= 2) {
+    const lastOrigIdx = $('smoothLoopCheck').checked && n >= 4 ? n - 1 : images.length - 1;
+    delays[lastOrigIdx] = baseDelay * 3;
+  }
+
+  return { images, delays };
+}
+
 // ═══════════════════════════════════════════════════════
 // Gifio GIF89a Encoder with Floyd-Steinberg dithering
 // ═══════════════════════════════════════════════════════
@@ -1022,7 +1103,7 @@ function lzw(indices, minCS) {
   return new Uint8Array(out);
 }
 
-function encodeGIF(imgs, w, h, delay, loop, dither) {
+function encodeGIF(imgs, w, h, delay, loop, dither, perFrameDelays) {
   const cvs=document.createElement('canvas'); cvs.width=w; cvs.height=h;
   const ctx=cvs.getContext('2d');
   const allPx=[], framePx=[];
@@ -1042,8 +1123,8 @@ function encodeGIF(imgs, w, h, delay, loop, dither) {
   ws('GIF89a'); w16(w); w16(h); w8(0xF7); w8(0); w8(0);
   for(const [r,g,b] of pal){w8(r);w8(g);w8(b);}
   w8(0x21);w8(0xFF);w8(11);ws('NETSCAPE2.0');w8(3);w8(1);w16(loop);w8(0);
-  const dCs=Math.round(delay/10);
   for(let f=0;f<imgs.length;f++){
+    const dCs=perFrameDelays?Math.round(perFrameDelays[f]/10):Math.round(delay/10);
     w8(0x21);w8(0xF9);w8(4);w8(0);w16(dCs);w8(0);w8(0);
     w8(0x2C);w16(0);w16(0);w16(w);w16(h);w8(0);
     const idx = dither ? ditherFrame(framePx[f],w,h,pal) : mapFrame(framePx[f],w,h,pal);
@@ -1079,8 +1160,14 @@ async function generateGif() {
       imgs = imgs.concat(rev);
     }
 
-    const ratio = imgs[0].height / imgs[0].width;
-    const w = outputWidth, h = Math.round(w * ratio);
+    // Build timing plan (smooth loop, hold first/last)
+    const plan = buildTimingPlan(imgs);
+    imgs = plan.images;
+    const perFrameDelays = plan.delays;
+
+    const ratio = imgs[0].height || imgs[0].naturalHeight;
+    const rw = imgs[0].width || imgs[0].naturalWidth;
+    const w = outputWidth, h = Math.round(w * (ratio / rw));
     const loop = +$('loopSelect').value;
     const dither = $('ditherCheck').checked;
 
@@ -1092,7 +1179,7 @@ async function generateGif() {
     $('progressLabel').textContent = dither ? 'Styling & dithering frames...' : 'Styling frames...';
     await new Promise(r => setTimeout(r, 30));
 
-    const data = encodeGIF(imgs, w, h, speed, loop, dither);
+    const data = encodeGIF(imgs, w, h, speed, loop, dither, perFrameDelays);
 
     $('progressFill').style.width = '95%';
     $('progressLabel').textContent = 'Wrapping up...';
