@@ -55,6 +55,27 @@ h1 {
   margin-bottom: 1.5rem;
 }
 .mark { margin-bottom: 0.5rem; opacity: 0.9; }
+
+@media (max-width: 380px) {
+  .app { padding: 1rem 0.75rem 2rem; }
+  h1 { font-size: 1.7rem; }
+  .subtitle { font-size: 0.78rem; }
+  .mark svg { width: 260px; }
+  .drop-zone { padding: 2rem 0.75rem; border-radius: 14px; }
+  .drop-zone.has-frames { padding: 0.8rem; }
+  .drop-text { font-size: 0.92rem; }
+  .drop-hint { font-size: 0.75rem; }
+  .frame-card img { width: 72px; height: 54px; }
+  .preset-chip canvas, .elem-chip canvas { width: 48px; height: 36px; }
+  .preset-chip-label, .elem-chip-label { font-size: 0.56rem; max-width: 52px; }
+  .preview-img { max-height: 280px; }
+  .controls { padding: 1rem; }
+  .control-label { min-width: 42px; font-size: 0.78rem; }
+  .control-value { min-width: 45px; font-size: 0.75rem; }
+  .style-title { font-size: 0.78rem; }
+  .footer { font-size: 0.7rem; }
+  .privacy-note { font-size: 0.65rem; }
+}
 </style>
 </head>
 <body>
@@ -90,12 +111,12 @@ h1 {
   <span class="privacy-note">100% in your browser — nothing is uploaded anywhere</span>
 
   <!-- Drop Zone -->
-  <label for="fileInput" id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Tap to add images or drop them here" onkeydown="if(event.key==='Enter')document.getElementById('fileInput').click()">
+  <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Tap to add images or drop them here" onkeydown="if(event.key==='Enter')document.getElementById('fileInput').click()">
     <div class="drop-icon">✦</div>
     <div class="drop-text">Drop images here, or tap to pick</div>
     <div class="drop-hint">From Photos, Files, Camera — JPG, PNG, WebP, anything</div>
-    <input type="file" id="fileInput" accept="image/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden">
-  </label>
+    <input type="file" id="fileInput" accept="image/*" multiple class="file-input-overlay">
+  </div>
 
   <!-- Title Card -->
   <div id="titleCardSection" class="title-card-section" style="display:none">
@@ -275,6 +296,12 @@ h1 {
 </div>
 
 <style>
+
+.drop-zone { position: relative; overflow: hidden; }
+.file-input-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; font-size: 0; z-index: 2;
+}
 .drop-zone {
   border: 2.5px dashed #c9bfb2;
   border-radius: 18px;
@@ -529,7 +556,13 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 @media (max-width: 600px) {
   .app { padding: 1.5rem 1rem 3rem; }
   h1 { font-size: 2rem; }
-  .drop-zone { padding: 2.5rem 1rem; }
+  
+.drop-zone { position: relative; overflow: hidden; }
+.file-input-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; font-size: 0; z-index: 2;
+}
+.drop-zone { padding: 2.5rem 1rem; }
   .frame-card img { width: 85px; height: 64px; }
   .controls { padding: 1.2rem; }
   .control-row { flex-wrap: wrap; gap: 10px; }
