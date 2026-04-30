@@ -156,6 +156,19 @@ h1 {
       <span id="sizeVal" class="control-value">800px</span>
     </div>
     <div class="control-row">
+      <label class="control-label">Crop</label>
+      <div class="control-options">
+        <select id="cropSelect" class="loop-select" aria-label="Aspect ratio crop" onchange="clearResult()">
+          <option value="original">Original</option>
+          <option value="1:1">Square</option>
+          <option value="4:3">4:3</option>
+          <option value="16:9">Widescreen</option>
+          <option value="9:16">Portrait</option>
+          <option value="3:2">3:2</option>
+        </select>
+      </div>
+    </div>
+    <div class="control-row">
       <label class="control-label">Loop</label>
       <div class="control-options">
         <select id="loopSelect" class="loop-select" onchange="clearResult()">
@@ -614,6 +627,11 @@ function smartDefaults() {
   if (frames.length >= 2 && frames.length <= 5 && activeElement === 'none') {
     setTimeout(() => showHint('✦ Try a background element for atmosphere'), 7000);
   }
+  // Intelligence: suggest square crop for portrait-oriented images
+  const imgRatio = frames[0].img.naturalWidth / frames[0].img.naturalHeight;
+  if (imgRatio < 0.8 && $('cropSelect') && $('cropSelect').value === 'original') {
+    setTimeout(() => showHint('✦ Portrait images? Try Square or 4:3 crop'), 9000);
+  }
 
   // Re-analyze frame differences if smart timing is on
   if ($('smartTimingCheck').checked) {
@@ -750,7 +768,7 @@ function removeFrame(idx) {
 }
 
 function clearAll() {
-  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('cropSelect'))$('cropSelect').value='original'; clearResult(); stopPlay(); updateUI();
 }
 
 function showFrame(idx) {
@@ -761,11 +779,24 @@ function showFrame(idx) {
   if (hasStyle) {
     const img = frames[idx].img;
     const w = Math.min(img.naturalWidth, 600);
-    const h = Math.round(w * img.naturalHeight / img.naturalWidth);
+    const cropV = $('cropSelect') ? $('cropSelect').value : 'original';
+    let h;
+    if (cropV === 'original') {
+      h = Math.round(w * img.naturalHeight / img.naturalWidth);
+    } else {
+      const [cw2, ch2] = cropV.split(':').map(Number);
+      h = Math.round(w * ch2 / cw2);
+    }
     presetCanvas.width = w; presetCanvas.height = h;
     // Composite: behind element → frame → style → overlay element
     compositeElement(presetCtx, w, h, idx, frames.length, 'behind');
-    presetCtx.drawImage(img, 0, 0, w, h);
+    // Center-crop preview
+    const sw = img.naturalWidth, sh = img.naturalHeight;
+    const srcR = sw / sh, dstR = w / h;
+    let sx = 0, sy = 0, sW = sw, sH = sh;
+    if (srcR > dstR) { sW = sh * dstR; sx = (sw - sW) / 2; }
+    else { sH = sw / dstR; sy = (sh - sH) / 2; }
+    presetCtx.drawImage(img, sx, sy, sW, sH, 0, 0, w, h);
     const imgData = presetCtx.getImageData(0, 0, w, h);
     applyStyle(imgData.data, w, h, idx, frames.length);
     presetCtx.putImageData(imgData, 0, 0);
@@ -1215,6 +1246,64 @@ const ELEMENTS = {
     grad.addColorStop(1, `hsla(${(hue+60)%360},60%,40%,0.2)`);
     ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
   }},
+
+  fireflies: { name: 'Fireflies', render: (ctx, w, h, fi, n) => {
+    const rng = seededRandom(77);
+    for (let i = 0; i < 20; i++) {
+      const baseX = rng() * w, baseY = rng() * h;
+      const driftX = Math.sin(fi * 0.4 + i * 1.7) * 12;
+      const driftY = Math.cos(fi * 0.3 + i * 2.3) * 8;
+      const pulse = Math.max(0, Math.sin(fi * 0.6 + i * 1.9));
+      if (pulse > 0.2) {
+        const x = baseX + driftX, y = baseY + driftY;
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, 6 + pulse * 4);
+        glow.addColorStop(0, `rgba(255,240,140,${pulse * 0.7})`);
+        glow.addColorStop(1, 'rgba(255,240,140,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(x - 12, y - 12, 24, 24);
+        ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,250,200,${pulse})`; ctx.fill();
+      }
+    }
+  }},
+
+  aurora: { name: 'Aurora', render: (ctx, w, h, fi, n) => {
+    const t = fi / (n - 1 || 1);
+    for (let band = 0; band < 4; band++) {
+      ctx.beginPath();
+      const yBase = h * 0.2 + band * h * 0.12;
+      ctx.moveTo(0, yBase);
+      for (let x = 0; x <= w; x += 10) {
+        const wave = Math.sin(x * 0.008 + fi * 0.5 + band * 1.5) * 20
+                   + Math.sin(x * 0.015 + fi * 0.3 + band) * 12;
+        ctx.lineTo(x, yBase + wave);
+      }
+      ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+      const hue = 120 + band * 40 + t * 30;
+      ctx.fillStyle = `hsla(${hue},70%,50%,${0.08 - band * 0.015})`;
+      ctx.fill();
+    }
+  }},
+
+  hearts: { name: 'Hearts', render: (ctx, w, h, fi, n) => {
+    const rng = seededRandom(fi * 300 + 22);
+    const colors = ['#E8807E','#D4537E','#ED93B1','#F4C0D1','#CC7A42'];
+    for (let i = 0; i < 12; i++) {
+      const x = rng() * w;
+      const y = (rng() * h * 1.4 - fi * h * 0.08) % (h * 1.2);
+      const size = 4 + rng() * 8;
+      const rot = (rng() - 0.5) * 0.5;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+      ctx.beginPath();
+      ctx.moveTo(0, size * 0.3);
+      ctx.bezierCurveTo(-size * 0.5, -size * 0.3, -size, size * 0.1, 0, size);
+      ctx.bezierCurveTo(size, size * 0.1, size * 0.5, -size * 0.3, 0, size * 0.3);
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.globalAlpha = 0.5 + rng() * 0.3;
+      ctx.fill(); ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }},
 };
 
 
@@ -1286,8 +1375,24 @@ async function buildTimingPlan(imgList) {
   }
   const n = images.length;
 
+  // Ease boomerang turnaround: slow down at the reversal points
+  const isBoom = $('boomerangCheck').checked;
+  if (isBoom && delays.length >= 5) {
+    // Find the turnaround point (midpoint of the sequence)
+    const origLen = Math.ceil((delays.length + 2) / 2); // original frame count before boomerang
+    const turnIdx = origLen - 1;
+    // Ease: frames near turnaround get longer delays
+    if (turnIdx > 0 && turnIdx < delays.length) {
+      delays[turnIdx] = Math.round(delays[turnIdx] * 1.8);
+      if (turnIdx > 0) delays[turnIdx - 1] = Math.round(delays[turnIdx - 1] * 1.3);
+      if (turnIdx < delays.length - 1) delays[turnIdx + 1] = Math.round(delays[turnIdx + 1] * 1.3);
+    }
+    // Also ease the loop point (last frame back to first)
+    delays[delays.length - 1] = Math.round(delays[delays.length - 1] * 1.4);
+  }
+
   // Smooth loop: cross-fade last frames into first (skip if boomerang — it already loops naturally)
-  const doSmooth = $('smoothLoopCheck').checked && !$('boomerangCheck').checked && n >= 4;
+  const doSmooth = $('smoothLoopCheck').checked && !isBoom && n >= 4;
   if (doSmooth) {
     const blendCanvas = document.createElement('canvas');
     const blendCtx = blendCanvas.getContext('2d');
@@ -1446,7 +1551,18 @@ function encodeGIF(imgs, w, h, delay, loop, dither, perFrameDelays) {
   for (let fi=0; fi<imgs.length; fi++) {
     ctx.clearRect(0,0,w,h);
     compositeElement(ctx, w, h, fi, imgs.length, 'behind');
-    ctx.drawImage(imgs[fi],0,0,w,h);
+    // Center-crop: fill target dimensions, cropping overflow
+    const srcImg = imgs[fi];
+    const sw = srcImg.naturalWidth || srcImg.width;
+    const sh = srcImg.naturalHeight || srcImg.height;
+    const srcRatio = sw / sh, dstRatio = w / h;
+    let sx = 0, sy = 0, sWidth = sw, sHeight = sh;
+    if (srcRatio > dstRatio) {
+      sWidth = sh * dstRatio; sx = (sw - sWidth) / 2;
+    } else {
+      sHeight = sw / dstRatio; sy = (sh - sHeight) / 2;
+    }
+    ctx.drawImage(srcImg, sx, sy, sWidth, sHeight, 0, 0, w, h);
     const d=ctx.getImageData(0,0,w,h);
     applyStyle(d.data, w, h, fi, imgs.length);
     ctx.putImageData(d, 0, 0);
@@ -1504,9 +1620,16 @@ async function generateGif() {
     imgs = plan.images;
     const perFrameDelays = plan.delays;
 
-    // Use first original frame for dimensions (transition frames may differ)
+    // Use first original frame for dimensions, apply crop
     const refImg = frames[0].img;
-    const w = outputWidth, h = Math.round(w * refImg.naturalHeight / refImg.naturalWidth);
+    const cropVal = $('cropSelect') ? $('cropSelect').value : 'original';
+    let w = outputWidth, h;
+    if (cropVal === 'original') {
+      h = Math.round(w * refImg.naturalHeight / refImg.naturalWidth);
+    } else {
+      const [cw, ch] = cropVal.split(':').map(Number);
+      h = Math.round(w * ch / cw);
+    }
     const loop = +$('loopSelect').value;
     const dither = $('ditherCheck').checked;
 
