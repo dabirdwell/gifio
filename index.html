@@ -637,6 +637,9 @@ if ('ontouchstart' in window) {
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
   if (frames.length === 0) return;
+  // Don't intercept when typing in inputs
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
   if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
   if (e.code === 'ArrowRight') { e.preventDefault(); stopPlay(); previewIdx = (previewIdx + 1) % frames.length; showFrame(previewIdx); renderFilmstrip(); }
   if (e.code === 'ArrowLeft') { e.preventDefault(); stopPlay(); previewIdx = (previewIdx - 1 + frames.length) % frames.length; showFrame(previewIdx); renderFilmstrip(); }
