@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="mark.svg" alt="Gifio — frames interpolating from geometry to organic form" width="500">
+  <img src="mark.svg" alt="Gifio — frames interpolating through the spectrum" width="500">
 </p>
 
 <h1 align="center">Gifio</h1>
@@ -12,67 +12,56 @@
 
 ## What it does
 
-Drop images in. Drag to reorder. Tune the speed, size, and quality. Download your GIF.
+Drop images in. Drag to reorder. Style them. Tune the timing. Download your GIF.
 
 That's it. Your images never leave your computer.
 
 ## Features
 
-- **Drag-and-drop** — from Finder, Files, Desktop, wherever
-- **Reorder frames** — drag thumbnails to rearrange
-- **Live preview** — plays your animation while you tune it
-- **Floyd-Steinberg dithering** — dramatically better color quality than naive GIF encoding
-- **Boomerang mode** — plays forward then backward, for that satisfying loop
-- **Adjustable speed** — 50ms to 2 seconds per frame
-- **Adjustable output size** — 200px to 1200px wide
-- **Loop control** — forever, once, or a fixed count
-- **Keyboard shortcuts** — Space to play/pause, arrow keys to step
-- **Smart defaults** — auto-suggests speed, size, and filename based on your images
-- **File size display** — know what you're downloading
-- **Zero dependencies** — one HTML file, nothing to install
+**Core:**
+- Drag-and-drop from Finder, Files, Desktop, anywhere
+- Reorder frames by dragging thumbnails
+- Live preview with play/pause and frame stepping
+- Floyd-Steinberg dithering for better color quality
+- Boomerang mode (forward + reverse)
+- Adjustable speed, output size, and loop count
+- Keyboard shortcuts (Space, arrow keys)
 
-## A little bit smart
+**Style presets (one-click looks):**
+- Film noir, Silver gelatin, Sepia, Cyanotype, Faded Polaroid
+- Golden hour, Midnight, Overcast, Candy
+- Rainbow Glasses — each frame cycles through the spectrum
+- Sunset Drift — warm to cool across frames
+- Neon Pulse — alternating complementary hues
+- Customize panel with brightness, contrast, saturation, warmth, vignette, grain
 
-Gifio pays attention without being loud about it:
+**Timing intelligence:**
+- Smooth loop — cross-fades the last frame into the first for seamless cycling
+- Hold first / Hold last — pause on opening or closing frame
+- Smart boomerang interaction (smooth loop defers when boomerang is on)
 
-- **Smart speed** — fewer frames get more dwell time, more frames play faster
-- **Smart sizing** — won't upscale small images or leave giant photos at full resolution
-- **Smart filenames** — "Favorites - 1 of 7.JPG" through "Favorites - 7 of 7.JPG" downloads as `favorites.gif`, not `animation.gif`
-- **No collisions** — second download becomes `favorites-2.gif`, third becomes `favorites-3.gif`
-- **Photo detection** — gently confirms dithering is on when it notices high-res photos
+**Quietly smart:**
+- Auto-suggests speed, size, and filename based on your images
+- Detects B&W source images and suggests tonal presets
+- Detects photos and confirms dithering is on
+- Suggests smooth loop for longer sequences
+- Smart filenames with collision prevention
 
 ## Privacy
 
-Everything runs in your browser via JavaScript. Your images are never uploaded anywhere. There is no server, no analytics, no tracking. View source if you want to verify.
+Everything runs in your browser via JavaScript. Your images are never uploaded anywhere. There is no server, no analytics, no tracking.
 
 ## How to use
 
-### Option 1: Use online
-Visit **[dabirdwell.github.io/gifio](https://dabirdwell.github.io/gifio/)**
-
-### Option 2: Use locally
-Download `index.html` and double-click it. Opens in any browser.
-
-### Option 3: Self-host
-It's one file. Put it anywhere you serve HTML.
+**Online:** [dabirdwell.github.io/gifio](https://dabirdwell.github.io/gifio/)
+**Locally:** Download `index.html` and double-click it.
+**Self-host:** It's one file. Put it anywhere you serve HTML.
 
 ## How it works
 
-The GIF encoder is written from scratch in vanilla JavaScript:
+The GIF encoder is written from scratch in vanilla JavaScript — no libraries, no dependencies. Median cut quantization, Floyd-Steinberg dithering, LZW compression, per-frame timing, all per the GIF89a spec. Style presets are canvas pixel operations applied nondestructively at export time.
 
-1. **Median cut quantization** reduces millions of colors to a 256-color palette
-2. **Floyd-Steinberg dithering** (optional) diffuses quantization error across neighboring pixels, producing smoother gradients
-3. **LZW compression** encodes each frame per the GIF89a standard
-4. **NETSCAPE2.0 extension** controls looping behavior
-
-No libraries. No canvas-to-blob hacks. Just bytes.
-
-## Technical notes
-
-- Input: JPG, PNG, WebP, or any browser-supported image format
-- Output: GIF89a with global color table (256 colors)
-- Large frames (5000×4000 photos) work fine — they're resized to your chosen output width
-- Boomerang mode duplicates interior frames in reverse, so a 7-frame input becomes a 13-frame GIF
+One HTML file. 46 functions. Zero dependencies.
 
 ## Built by
 

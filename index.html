@@ -165,15 +165,15 @@ h1 {
       <label class="control-label">Timing</label>
       <div class="control-options">
         <label class="toggle-label">
-          <input type="checkbox" id="smoothLoopCheck" onchange="clearResult(); updateDuration()">
+          <input type="checkbox" id="smoothLoopCheck" aria-label="Smooth loop transition" onchange="handleSmoothToggle()">
           <span class="toggle-text">Smooth loop</span>
         </label>
         <label class="toggle-label" title="Pause on first frame">
-          <input type="checkbox" id="holdFirstCheck" onchange="clearResult(); updateDuration()">
+          <input type="checkbox" id="holdFirstCheck" aria-label="Hold on first frame" onchange="clearResult(); updateDuration()">
           <span class="toggle-text">Hold first</span>
         </label>
         <label class="toggle-label" title="Pause on last frame">
-          <input type="checkbox" id="holdLastCheck" onchange="clearResult(); updateDuration()">
+          <input type="checkbox" id="holdLastCheck" aria-label="Hold on last frame" onchange="clearResult(); updateDuration()">
           <span class="toggle-text">Hold last</span>
         </label>
       </div>
@@ -622,7 +622,7 @@ function updateDuration() {
   if ($('boomerangCheck').checked && n > 2) frameCount = n + (n - 2);
   let totalMs = frameCount * speed;
   // Account for smooth loop transition frames
-  if ($('smoothLoopCheck').checked && frameCount >= 4) totalMs += 3 * speed;
+  if ($('smoothLoopCheck').checked && !$('boomerangCheck').checked && frameCount >= 4) totalMs += 3 * speed;
   // Account for holds
   if ($('holdFirstCheck').checked) totalMs += 2 * speed;
   if ($('holdLastCheck').checked) totalMs += 2 * speed;
@@ -925,6 +925,14 @@ function selectPreset(key) {
   }
 }
 
+
+function handleSmoothToggle() {
+  if ($('smoothLoopCheck').checked && $('boomerangCheck').checked) {
+    showHint('\u2726 Boomerang already loops naturally \u2014 smooth loop works best without it');
+  }
+  clearResult(); updateDuration();
+}
+
 function toggleCustomize() {
   const panel = $('customizePanel');
   const btn = document.querySelector('.customize-toggle');
@@ -945,15 +953,16 @@ function setCustom(key, val, input) {
 // Loop & timing intelligence
 // ═══════════════════════════════════════════════════════
 
-function buildTimingPlan(imgList) {
+async function buildTimingPlan(imgList) {
   // Returns { images: [...], delays: [...] } with per-frame timing
   let images = [...imgList];
   const baseDelay = speed;
   let delays = images.map(() => baseDelay);
   const n = images.length;
 
-  // Smooth loop: cross-fade last 2 frames into first 2
-  if ($('smoothLoopCheck').checked && n >= 4) {
+  // Smooth loop: cross-fade last frames into first (skip if boomerang — it already loops naturally)
+  const doSmooth = $('smoothLoopCheck').checked && !$('boomerangCheck').checked && n >= 4;
+  if (doSmooth) {
     const blendCanvas = document.createElement('canvas');
     const blendCtx = blendCanvas.getContext('2d');
     const w = images[0].naturalWidth || images[0].width;
@@ -961,33 +970,34 @@ function buildTimingPlan(imgList) {
     blendCanvas.width = w; blendCanvas.height = h;
 
     // Generate 3 transition frames blending last→first
-    const transitionFrames = [];
     const steps = 3;
     for (let s = 1; s <= steps; s++) {
-      const alpha = s / (steps + 1); // 0.25, 0.5, 0.75
+      const alpha = s / (steps + 1);
       blendCtx.clearRect(0, 0, w, h);
       blendCtx.globalAlpha = 1;
       blendCtx.drawImage(images[n - 1], 0, 0, w, h);
       blendCtx.globalAlpha = alpha;
       blendCtx.drawImage(images[0], 0, 0, w, h);
-      // Capture as image
-      const tImg = new Image();
-      tImg.src = blendCanvas.toDataURL();
-      tImg.width = w; tImg.height = h;
-      transitionFrames.push(tImg);
+      // Create image and await load
+      const dataUrl = blendCanvas.toDataURL();
+      const tImg = await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = dataUrl;
+      });
+      images.push(tImg);
+      delays.push(baseDelay);
     }
-    images = images.concat(transitionFrames);
-    delays = delays.concat(transitionFrames.map(() => baseDelay));
   }
 
-  // Hold first: double the first frame's delay
+  // Hold first: triple the first frame's delay
   if ($('holdFirstCheck').checked && images.length >= 2) {
     delays[0] = baseDelay * 3;
   }
 
-  // Hold last: double the last original frame's delay
+  // Hold last: triple the last original frame's delay
   if ($('holdLastCheck').checked && images.length >= 2) {
-    const lastOrigIdx = $('smoothLoopCheck').checked && n >= 4 ? n - 1 : images.length - 1;
+    const lastOrigIdx = doSmooth ? n - 1 : images.length - 1;
     delays[lastOrigIdx] = baseDelay * 3;
   }
 
@@ -1161,13 +1171,13 @@ async function generateGif() {
     }
 
     // Build timing plan (smooth loop, hold first/last)
-    const plan = buildTimingPlan(imgs);
+    const plan = await buildTimingPlan(imgs);
     imgs = plan.images;
     const perFrameDelays = plan.delays;
 
-    const ratio = imgs[0].height || imgs[0].naturalHeight;
-    const rw = imgs[0].width || imgs[0].naturalWidth;
-    const w = outputWidth, h = Math.round(w * (ratio / rw));
+    // Use first original frame for dimensions (transition frames may differ)
+    const refImg = frames[0].img;
+    const w = outputWidth, h = Math.round(w * refImg.naturalHeight / refImg.naturalWidth);
     const loop = +$('loopSelect').value;
     const dither = $('ditherCheck').checked;
 
