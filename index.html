@@ -114,7 +114,7 @@ h1 {
   <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Tap to add images or drop them here" onkeydown="if(event.key==='Enter')document.getElementById('fileInput').click()">
     <div class="drop-icon">✦</div>
     <div class="drop-text">Drop images here, or tap to pick</div>
-    <div class="drop-hint">From Photos, Files, Camera — JPG, PNG, WebP, anything</div>
+    <div class="drop-hint">From Photos, Files, or Camera</div>
     <input type="file" id="fileInput" accept="image/*" multiple class="file-input-overlay">
   </div>
 
@@ -628,6 +628,12 @@ document.addEventListener('drop', function() {
 });
 // Also restore on dragleave from the drop zone
 
+
+// Adapt copy for touch devices
+if ('ontouchstart' in window) {
+  const dt = dz.querySelector('.drop-text');
+  if (dt) dt.textContent = 'Tap to add images, or drag them in';
+}
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
   if (frames.length === 0) return;
