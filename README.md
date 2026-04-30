@@ -1,8 +1,8 @@
-# GIF Studio
+# Gifio
 
 A free, private GIF maker that runs entirely in your browser. No uploads, no servers, no accounts.
 
-**[→ Open GIF Studio](https://dabirdwell.github.io/gif-studio/)**
+**[→ Open Gifio](https://dabirdwell.github.io/gifio/)**
 
 ---
 
@@ -23,8 +23,19 @@ That's it. Your images never leave your computer.
 - **Adjustable output size** — 200px to 1200px wide
 - **Loop control** — forever, once, or a fixed count
 - **Keyboard shortcuts** — Space to play/pause, arrow keys to step
+- **Smart defaults** — auto-suggests speed, size, and filename based on your images
 - **File size display** — know what you're downloading
 - **Zero dependencies** — one HTML file, nothing to install
+
+## A little bit smart
+
+Gifio pays attention without being loud about it:
+
+- **Smart speed** — fewer frames get more dwell time, more frames play faster
+- **Smart sizing** — won't upscale small images or leave giant photos at full resolution
+- **Smart filenames** — "Favorites - 1 of 7.JPG" through "Favorites - 7 of 7.JPG" downloads as `favorites.gif`, not `animation.gif`
+- **No collisions** — second download becomes `favorites-2.gif`, third becomes `favorites-3.gif`
+- **Photo detection** — gently confirms dithering is on when it notices high-res photos
 
 ## Privacy
 
@@ -33,7 +44,7 @@ Everything runs in your browser via JavaScript. Your images are never uploaded a
 ## How to use
 
 ### Option 1: Use online
-Visit **[dabirdwell.github.io/gif-studio](https://dabirdwell.github.io/gif-studio/)**
+Visit **[dabirdwell.github.io/gifio](https://dabirdwell.github.io/gifio/)**
 
 ### Option 2: Use locally
 Download `index.html` and double-click it. Opens in any browser.
@@ -47,7 +58,7 @@ The GIF encoder is written from scratch in vanilla JavaScript:
 
 1. **Median cut quantization** reduces millions of colors to a 256-color palette
 2. **Floyd-Steinberg dithering** (optional) diffuses quantization error across neighboring pixels, producing smoother gradients
-3. **LZW compression** encodes each frame using the GIF89a standard
+3. **LZW compression** encodes each frame per the GIF89a standard
 4. **NETSCAPE2.0 extension** controls looping behavior
 
 No libraries. No canvas-to-blob hacks. Just bytes.

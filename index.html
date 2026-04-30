@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GIF Studio — A free GIF maker</title>
-<meta name="description" content="A free, private GIF maker that runs entirely in your browser. Drop images, tune speed and quality, download your GIF. No uploads, no servers, no accounts.">
+<title>Gifio — A free GIF maker</title>
+<meta name="description" content="Gifio is a free, private GIF maker that runs entirely in your browser. Drop images, tune the feel, take the GIF. No uploads, no servers, no accounts.">
 <meta name="theme-color" content="#5c4f42">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✦</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&display=swap" rel="stylesheet">
@@ -56,7 +56,7 @@ h1 {
 </head>
 <body>
 <div class="app">
-  <h1>gif studio</h1>
+  <h1>gifio</h1>
   <p class="subtitle">Drop your frames. Tune the feel. Take the GIF.</p>
   <span class="privacy-note">100% in your browser — nothing is uploaded anywhere</span>
 
@@ -144,7 +144,7 @@ h1 {
 
   <div class="footer">
     <span class="kbd-hint" id="kbdHint" style="display:none">Space = play/pause · ← → = step</span>
-    <a href="https://github.com/dabirdwell/gif-studio" class="footer-link" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/dabirdwell/gifio" class="footer-link" target="_blank" rel="noopener">GitHub</a>
     <span class="footer-sep">·</span>
     <span class="footer-credit">by <a href="https://humanityandai.com" target="_blank" rel="noopener" class="footer-link">Humanity and AI</a></span>
   </div>
@@ -359,7 +359,7 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 
 <script>
 // ═══════════════════════════════════════════════════════
-// GIF Studio — State & UI
+// Gifio — State & UI
 // ═══════════════════════════════════════════════════════
 
 let frames = [];
@@ -621,7 +621,7 @@ function restartPlay() { if (playing) startPlay(); }
 function resetResult() { clearResult(); updateUI(); startPlay(); }
 
 // ═══════════════════════════════════════════════════════
-// GIF89a Encoder with Floyd-Steinberg dithering
+// Gifio GIF89a Encoder with Floyd-Steinberg dithering
 // ═══════════════════════════════════════════════════════
 
 function quantize(pixels, max) {
