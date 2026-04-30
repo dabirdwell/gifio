@@ -6,6 +6,8 @@
 <title>Gifio — A free GIF maker</title>
 <meta name="description" content="Gifio is a free, private GIF maker that runs entirely in your browser. Drop images, tune the feel, take the GIF. No uploads, no servers, no accounts.">
 <meta name="theme-color" content="#5c4f42">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✦</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&display=swap" rel="stylesheet">
 <style>
@@ -88,12 +90,12 @@ h1 {
   <span class="privacy-note">100% in your browser — nothing is uploaded anywhere</span>
 
   <!-- Drop Zone -->
-  <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop images here or click to browse" onclick="document.getElementById('fileInput').click()" onkeydown="if(event.key==='Enter')document.getElementById('fileInput').click()">
+  <label for="fileInput" id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Tap to add images or drop them here" onkeydown="if(event.key==='Enter')document.getElementById('fileInput').click()">
     <div class="drop-icon">✦</div>
-    <div class="drop-text">Drop images here, or click to pick</div>
-    <div class="drop-hint">From Finder, Files, Desktop — JPG, PNG, WebP, anything</div>
-    <input type="file" id="fileInput" accept="image/*" multiple hidden>
-  </div>
+    <div class="drop-text">Drop images here, or tap to pick</div>
+    <div class="drop-hint">From Photos, Files, Camera — JPG, PNG, WebP, anything</div>
+    <input type="file" id="fileInput" accept="image/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden">
+  </label>
 
   <!-- Title Card -->
   <div id="titleCardSection" class="title-card-section" style="display:none">
@@ -293,6 +295,7 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 .drop-hint { font-size: 0.82rem; color: #b0a599; margin-top: 6px; }
 
 .filmstrip {
+  touch-action: pan-x;
   display: flex; gap: 10px; overflow-x: auto; padding: 12px 4px;
   margin-bottom: 1.5rem; scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -530,9 +533,23 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
   .frame-card img { width: 85px; height: 64px; }
   .controls { padding: 1.2rem; }
   .control-row { flex-wrap: wrap; gap: 10px; }
+
+  .frame-card { min-width: 85px; }
+  .frame-card img { min-height: 64px; }
+  .frame-delete { width: 28px; height: 28px; font-size: 16px; line-height: 28px; opacity: 0.8; }
+  .play-btn { min-height: 44px; min-width: 44px; }
+  .icon-btn { min-height: 44px; min-width: 44px; }
+  .btn-primary { min-height: 48px; }
+  .btn-secondary { min-height: 48px; }
+  .btn-ghost { min-height: 44px; }
+  .preset-chip canvas { width: 56px; height: 42px; }
+  .elem-chip canvas { width: 56px; height: 42px; }
+  .toggle-label { min-height: 36px; display: flex; align-items: center; }
+  .control-options { gap: 10px; }
+  .loop-select { min-height: 36px; }
+  .title-input { min-height: 44px; font-size: 16px; }
   .btn-primary { padding: 14px 28px; width: 100%; }
   .btn-secondary { width: 100%; }
-  .preset-chip canvas { width: 52px; height: 39px; }
 }
 </style>
 
