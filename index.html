@@ -61,7 +61,7 @@ h1 {
   <span class="privacy-note">100% in your browser — nothing is uploaded anywhere</span>
 
   <!-- Drop Zone -->
-  <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+  <div id="dropZone" class="drop-zone" role="button" tabindex="0" aria-label="Drop images here or click to browse" onclick="document.getElementById('fileInput').click()" onkeydown="if(event.key==='Enter')document.getElementById('fileInput').click()">
     <div class="drop-icon">✦</div>
     <div class="drop-text">Drop images here, or click to pick</div>
     <div class="drop-hint">From Finder, Files, Desktop — JPG, PNG, WebP, anything</div>
@@ -77,8 +77,10 @@ h1 {
     <div class="preview-controls">
       <button id="playBtn" class="play-btn paused" onclick="togglePlay()">▶ Play</button>
       <span id="frameCounter" class="frame-counter">Frame 1 of 1</span>
-      <button class="icon-btn" onclick="reverseFrames()" title="Reverse order">⇆</button>
+      <span id="durationEst" class="duration-est"></span>
+      <button class="icon-btn" onclick="reverseFrames()" title="Reverse frame order" aria-label="Reverse frame order">⇆</button>
     </div>
+    <div id="smartHint" class="smart-hint" style="display:none"></div>
   </div>
 
   <!-- Controls -->
@@ -86,7 +88,7 @@ h1 {
     <div class="control-row">
       <label class="control-label">Speed</label>
       <input type="range" id="speedSlider" class="slider" min="50" max="2000" step="50" value="500"
-             oninput="speed=+this.value; document.getElementById('speedVal').textContent=this.value+'ms'; restartPlay(); clearResult()">
+             oninput="speed=+this.value; document.getElementById('speedVal').textContent=this.value+'ms'; restartPlay(); clearResult(); updateDuration()">
       <span id="speedVal" class="control-value">500ms</span>
     </div>
     <div class="control-row">
@@ -105,7 +107,7 @@ h1 {
           <option value="5">5×</option>
         </select>
         <label class="toggle-label">
-          <input type="checkbox" id="boomerangCheck" onchange="clearResult()">
+          <input type="checkbox" id="boomerangCheck" onchange="clearResult(); updateDuration()">
           <span class="toggle-text">Boomerang</span>
         </label>
         <label class="toggle-label">
@@ -142,9 +144,9 @@ h1 {
 
   <div class="footer">
     <span class="kbd-hint" id="kbdHint" style="display:none">Space = play/pause · ← → = step</span>
-    <a href="https://github.com/dabirdwell/gif-studio" class="footer-link" target="_blank">GitHub</a>
+    <a href="https://github.com/dabirdwell/gif-studio" class="footer-link" target="_blank" rel="noopener">GitHub</a>
     <span class="footer-sep">·</span>
-    <span class="footer-credit">by <a href="https://humanityandai.com" target="_blank" class="footer-link">Humanity and AI</a></span>
+    <span class="footer-credit">by <a href="https://humanityandai.com" target="_blank" rel="noopener" class="footer-link">Humanity and AI</a></span>
   </div>
 </div>
 
@@ -160,6 +162,8 @@ h1 {
   margin-bottom: 1.5rem;
 }
 .drop-zone.active { border-color: #8b7355; background: rgba(139,115,85,0.07); }
+.drop-zone:focus-visible { outline: 3px solid #8b7355; outline-offset: 2px; }
+button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { outline: 2px solid #8b7355; outline-offset: 2px; }
 .drop-zone.has-frames { padding: 1.2rem; }
 .drop-icon { font-size: 2.8rem; margin-bottom: 10px; opacity: 0.35; transition: transform 0.3s; }
 .drop-zone.active .drop-icon { transform: scale(1.15); }
@@ -225,6 +229,13 @@ h1 {
 .play-btn.playing { background: #e8e0d6; color: #5c4f42; }
 .play-btn.paused { background: #8b7355; color: #fff; }
 .frame-counter { font-size: 0.8rem; color: #9a8e82; }
+.duration-est { font-size: 0.75rem; color: #b0a599; font-style: italic; }
+.smart-hint {
+  font-size: 0.78rem; color: #8b7355; margin-top: 10px;
+  padding: 8px 14px; background: rgba(139,115,85,0.06);
+  border-radius: 8px; border-left: 3px solid rgba(139,115,85,0.3);
+  animation: fadeIn 0.4s ease;
+}
 .icon-btn {
   font-family: 'DM Sans', sans-serif; padding: 6px 12px;
   border-radius: 8px; border: 1.5px solid #d8cfc4;
@@ -394,6 +405,7 @@ function loadImages(fileList) {
           frames = frames.concat(batch);
           previewIdx = 0;
           clearResult();
+          smartDefaults();
           updateUI();
           startPlay();
         }
@@ -412,6 +424,100 @@ function reverseFrames() {
 
 function clearResult() {
   if (gifBlobUrl) { URL.revokeObjectURL(gifBlobUrl); gifBlobUrl = null; gifBlobSize = 0; }
+}
+
+// ═══════════════════════════════════════════════════════
+// Quiet intelligence — the app just "gets it"
+// ═══════════════════════════════════════════════════════
+
+let smartName = 'animation';
+let downloadCounts = {};   // Track downloads per name to prevent collisions
+let hintShown = false;
+
+function smartDefaults() {
+  if (!frames.length) return;
+
+  // Smart speed: fewer frames want more dwell time
+  const n = frames.length;
+  let suggested;
+  if (n <= 3) suggested = 800;
+  else if (n <= 5) suggested = 600;
+  else if (n <= 8) suggested = 400;
+  else if (n <= 15) suggested = 250;
+  else suggested = 150;
+  speed = suggested;
+  $('speedSlider').value = suggested;
+  $('speedVal').textContent = suggested + 'ms';
+
+  // Smart size: don't upscale small images
+  const nativeW = frames[0].img.naturalWidth;
+  if (nativeW < 800) {
+    outputWidth = Math.max(200, Math.round(nativeW / 50) * 50);
+  } else if (nativeW >= 3000) {
+    outputWidth = 800;
+  } else {
+    outputWidth = Math.min(1200, Math.round(nativeW / 2 / 50) * 50);
+  }
+  $('sizeSlider').value = outputWidth;
+  $('sizeVal').textContent = outputWidth + 'px';
+
+  // Smart filename: find common prefix
+  smartName = deriveFilename();
+
+  // Gentle hint for photo content (high-res = probably photos)
+  if (!hintShown && nativeW >= 1500) {
+    showHint('✦ Photos detected — dithering is on for smoother colors');
+    hintShown = true;
+  }
+
+  updateDuration();
+}
+
+function deriveFilename() {
+  const names = frames.map(f => f.name.replace(/\.[^.]+$/, ''));
+  if (names.length === 1) return sanitize(names[0]);
+
+  // Find longest common prefix
+  let prefix = names[0];
+  for (let i = 1; i < names.length; i++) {
+    while (!names[i].startsWith(prefix) && prefix.length > 0) {
+      prefix = prefix.slice(0, -1);
+    }
+  }
+  prefix = prefix.replace(/[\s\-_.,]+$/, '').replace(/\d+$/, '').replace(/[\s\-_.,]+$/, '');
+  if (prefix.length >= 3) return sanitize(prefix);
+  return sanitize(names[0].replace(/[\s\-_]*\d+[\s\-_]*(of[\s\-_]*\d+)?$/i, ''));
+}
+
+function sanitize(s) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'animation';
+}
+
+function getDownloadFilename() {
+  // First download of a name is clean. Second+ gets a suffix.
+  if (!downloadCounts[smartName]) {
+    downloadCounts[smartName] = 1;
+    return smartName + '.gif';
+  }
+  downloadCounts[smartName]++;
+  return smartName + '-' + downloadCounts[smartName] + '.gif';
+}
+
+function showHint(text) {
+  const el = $('smartHint');
+  el.textContent = text;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => { el.style.display = 'none'; el.style.opacity = '1'; }, 500); }, 6000);
+}
+
+function updateDuration() {
+  const n = frames.length;
+  if (n < 2) { $('durationEst').textContent = ''; return; }
+  let frameCount = n;
+  if ($('boomerangCheck').checked && n > 2) frameCount = n + (n - 2);
+  const totalMs = frameCount * speed;
+  const sec = (totalMs / 1000).toFixed(1);
+  $('durationEst').textContent = '~' + sec + 's per loop';
 }
 
 function updateUI() {
@@ -479,7 +585,7 @@ function removeFrame(idx) {
 }
 
 function clearAll() {
-  frames = []; previewIdx = 0; clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; clearResult(); stopPlay(); updateUI();
 }
 
 function showFrame(idx) {
@@ -716,7 +822,7 @@ function downloadGif() {
   if (!gifBlobUrl) return;
   const a = document.createElement('a');
   a.href = gifBlobUrl;
-  a.download = 'animation.gif';
+  a.download = getDownloadFilename();
   a.click();
 }
 </script>
