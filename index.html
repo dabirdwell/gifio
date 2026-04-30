@@ -133,7 +133,7 @@ h1 {
     <div class="control-row">
       <label class="control-label">Speed</label>
       <input type="range" id="speedSlider" class="slider" min="50" max="2000" step="50" value="500"
-             oninput="speed=+this.value; document.getElementById('speedVal').textContent=this.value+'ms'; restartPlay(); clearResult(); updateDuration()">
+             oninput="speed=+this.value; document.getElementById('speedVal').textContent=this.value+'ms'; restartPlay(); clearResult(); updateDuration(); if($('smartTimingCheck').checked)$('speedVal').textContent=this.value+'ms base'">
       <span id="speedVal" class="control-value">500ms</span>
     </div>
     <div class="control-row">
@@ -175,6 +175,10 @@ h1 {
         <label class="toggle-label" title="Pause on last frame">
           <input type="checkbox" id="holdLastCheck" aria-label="Hold on last frame" onchange="clearResult(); updateDuration()">
           <span class="toggle-text">Hold last</span>
+        </label>
+        <label class="toggle-label" title="Vary speed by visual change">
+          <input type="checkbox" id="smartTimingCheck" aria-label="Smart timing based on visual difference" onchange="handleSmartTiming()">
+          <span class="toggle-text">Smart timing</span>
         </label>
       </div>
     </div>
@@ -576,6 +580,11 @@ function smartDefaults() {
   if (frames.length >= 5 && !$('smoothLoopCheck').checked) {
     setTimeout(() => showHint('✦ Try Smooth loop for a seamless cycle'), 4000);
   }
+
+  // Re-analyze frame differences if smart timing is on
+  if ($('smartTimingCheck').checked) {
+    frameDiffs = analyzeFrameDifferences();
+  }
 }
 
 function deriveFilename() {
@@ -620,10 +629,19 @@ function updateDuration() {
   if (n < 2) { $('durationEst').textContent = ''; return; }
   let frameCount = n;
   if ($('boomerangCheck').checked && n > 2) frameCount = n + (n - 2);
-  let totalMs = frameCount * speed;
-  // Account for smooth loop transition frames
+  let totalMs;
+  if ($('smartTimingCheck').checked && frameDiffs.length > 0) {
+    const smartDelays = computeSmartDelays(frameDiffs, speed);
+    totalMs = smartDelays.reduce((s, d) => s + d, 0);
+    if ($('boomerangCheck').checked && frameCount > frames.length) {
+      // Add mirrored delays for boomerang portion
+      const revDelays = smartDelays.slice(1, -1).reverse();
+      totalMs += revDelays.reduce((s, d) => s + d, 0);
+    }
+  } else {
+    totalMs = frameCount * speed;
+  }
   if ($('smoothLoopCheck').checked && !$('boomerangCheck').checked && frameCount >= 4) totalMs += 3 * speed;
-  // Account for holds
   if ($('holdFirstCheck').checked) totalMs += 2 * speed;
   if ($('holdLastCheck').checked) totalMs += 2 * speed;
   const sec = (totalMs / 1000).toFixed(1);
@@ -697,7 +715,7 @@ function removeFrame(idx) {
 }
 
 function clearAll() {
-  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; clearResult(); stopPlay(); updateUI();
 }
 
 function showFrame(idx) {
@@ -953,11 +971,107 @@ function setCustom(key, val, input) {
 // Loop & timing intelligence
 // ═══════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════
+// Smart timing — vary speed by visual difference
+// ═══════════════════════════════════════════════════════
+
+let frameDiffs = []; // Cached difference scores between adjacent frames
+
+function analyzeFrameDifferences() {
+  // Compare adjacent frames, return array of difference scores (0-1)
+  if (frames.length < 2) return [];
+  const diffs = [];
+  const sampleCanvas = document.createElement('canvas');
+  const sw = 80, sh = 60; // Small sample for speed
+  sampleCanvas.width = sw; sampleCanvas.height = sh;
+  const ctx = sampleCanvas.getContext('2d');
+  
+  // Get pixel data for each frame at sample resolution
+  const frameData = [];
+  for (const f of frames) {
+    ctx.clearRect(0, 0, sw, sh);
+    ctx.drawImage(f.img, 0, 0, sw, sh);
+    frameData.push(ctx.getImageData(0, 0, sw, sh).data);
+  }
+  
+  // Compare each pair
+  for (let i = 0; i < frameData.length - 1; i++) {
+    const a = frameData[i], b = frameData[i + 1];
+    let totalDiff = 0;
+    const pixels = sw * sh;
+    for (let p = 0; p < a.length; p += 4) {
+      const dr = Math.abs(a[p] - b[p]);
+      const dg = Math.abs(a[p+1] - b[p+1]);
+      const db = Math.abs(a[p+2] - b[p+2]);
+      totalDiff += (dr + dg + db) / 3;
+    }
+    diffs.push(totalDiff / pixels / 255); // Normalize to 0-1
+  }
+  
+  return diffs;
+}
+
+function computeSmartDelays(diffs, baseDelay) {
+  // Map difference scores to delays
+  // Higher difference → longer delay (let the eye absorb)
+  // Lower difference → shorter delay (move through quickly)
+  if (!diffs.length) return [];
+  
+  const minDiff = Math.min(...diffs);
+  const maxDiff = Math.max(...diffs);
+  const range = maxDiff - minDiff;
+  
+  const delays = [];
+  for (let i = 0; i < diffs.length; i++) {
+    if (range < 0.005) {
+      // All frames very similar — uniform timing
+      delays.push(baseDelay);
+    } else {
+      // Normalize to 0-1, then map to 0.5x-1.8x base delay
+      const normalized = (diffs[i] - minDiff) / range;
+      const multiplier = 0.5 + normalized * 1.3;
+      delays.push(Math.round(baseDelay * multiplier));
+    }
+  }
+  // Last frame gets base delay (no "next frame" to compare against)
+  delays.push(baseDelay);
+  
+  return delays;
+}
+
+function handleSmartTiming() {
+  clearResult();
+  if ($('smartTimingCheck').checked && frames.length >= 3) {
+    frameDiffs = analyzeFrameDifferences();
+    const range = frameDiffs.length ? Math.max(...frameDiffs) - Math.min(...frameDiffs) : 0;
+    if (range < 0.005) {
+      showHint('\u2726 Frames are very similar \u2014 smart timing is on but won\u2019t change much');
+    } else {
+      const fastest = Math.round(speed * 0.5);
+      const slowest = Math.round(speed * 1.8);
+      showHint('\u2726 Analyzing motion \u2014 timing will range from ' + fastest + 'ms to ' + slowest + 'ms');
+    }
+  }
+  updateDuration();
+}
+
 async function buildTimingPlan(imgList) {
   // Returns { images: [...], delays: [...] } with per-frame timing
   let images = [...imgList];
   const baseDelay = speed;
-  let delays = images.map(() => baseDelay);
+  let delays;
+  if ($('smartTimingCheck').checked && frameDiffs.length > 0) {
+    delays = computeSmartDelays(frameDiffs, baseDelay);
+    // If boomerang added frames, mirror the delays too
+    if (images.length > frameDiffs.length + 1) {
+      const origDelays = delays.slice();
+      const revDelays = origDelays.slice(1, -1).reverse();
+      delays = origDelays.concat(revDelays);
+    }
+  } else {
+    delays = images.map(() => baseDelay);
+  }
   const n = images.length;
 
   // Smooth loop: cross-fade last frames into first (skip if boomerang — it already loops naturally)
