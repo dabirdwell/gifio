@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GIF Studio — A free GIF maker</title>
+<meta name="description" content="A free, private GIF maker that runs entirely in your browser. Drop images, tune speed and quality, download your GIF. No uploads, no servers, no accounts.">
+<meta name="theme-color" content="#5c4f42">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✦</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #faf6f1 0%, #f0ebe4 40%, #e8e0d6 100%);
+  color: #3a3530;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 2.6rem;
+  font-weight: 300;
+  font-style: italic;
+  color: #5c4f42;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 0.88rem;
+  color: #9a8e82;
+  margin-bottom: 2rem;
+  letter-spacing: 0.02em;
+}
+
+.privacy-note {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: #b0a599;
+  background: rgba(255,255,255,0.5);
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 1.5rem;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>gif studio</h1>
+  <p class="subtitle">Drop your frames. Tune the feel. Take the GIF.</p>
+  <span class="privacy-note">100% in your browser — nothing is uploaded anywhere</span>
+
+  <!-- Drop Zone -->
+  <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
+    <div class="drop-icon">✦</div>
+    <div class="drop-text">Drop images here, or click to pick</div>
+    <div class="drop-hint">From Finder, Files, Desktop — JPG, PNG, WebP, anything</div>
+    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+  </div>
+
+  <!-- Filmstrip -->
+  <div id="filmstrip" class="filmstrip" style="display:none"></div>
+
+  <!-- Preview -->
+  <div id="previewArea" class="preview-area" style="display:none">
+    <img id="previewImg" class="preview-img" alt="Preview">
+    <div class="preview-controls">
+      <button id="playBtn" class="play-btn paused" onclick="togglePlay()">▶ Play</button>
+      <span id="frameCounter" class="frame-counter">Frame 1 of 1</span>
+      <button class="icon-btn" onclick="reverseFrames()" title="Reverse order">⇆</button>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls" class="controls" style="display:none">
+    <div class="control-row">
+      <label class="control-label">Speed</label>
+      <input type="range" id="speedSlider" class="slider" min="50" max="2000" step="50" value="500"
+             oninput="speed=+this.value; document.getElementById('speedVal').textContent=this.value+'ms'; restartPlay(); clearResult()">
+      <span id="speedVal" class="control-value">500ms</span>
+    </div>
+    <div class="control-row">
+      <label class="control-label">Size</label>
+      <input type="range" id="sizeSlider" class="slider" min="200" max="1200" step="50" value="800"
+             oninput="outputWidth=+this.value; document.getElementById('sizeVal').textContent=this.value+'px'; clearResult()">
+      <span id="sizeVal" class="control-value">800px</span>
+    </div>
+    <div class="control-row">
+      <label class="control-label">Loop</label>
+      <div class="control-options">
+        <select id="loopSelect" class="loop-select" onchange="clearResult()">
+          <option value="0" selected>Forever</option>
+          <option value="1">Once</option>
+          <option value="3">3×</option>
+          <option value="5">5×</option>
+        </select>
+        <label class="toggle-label">
+          <input type="checkbox" id="boomerangCheck" onchange="clearResult()">
+          <span class="toggle-text">Boomerang</span>
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="ditherCheck" checked onchange="clearResult()">
+          <span class="toggle-text">Dither</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div id="actionRow" class="action-row" style="display:none">
+    <button id="createBtn" class="btn-primary" onclick="generateGif()">✦ Create GIF</button>
+  </div>
+  <div id="progressWrap" class="progress-wrap" style="display:none">
+    <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+    <span id="progressLabel" class="progress-label">Preparing frames...</span>
+  </div>
+
+  <!-- Result -->
+  <div id="resultArea" class="result-area" style="display:none">
+    <img id="resultImg" class="result-img" alt="Your GIF">
+    <div id="resultSize" class="result-size"></div>
+    <div class="result-buttons">
+      <button class="btn-primary" onclick="downloadGif()">↓ Download</button>
+      <button class="btn-secondary" onclick="resetResult()">Adjust & Remake</button>
+    </div>
+  </div>
+
+  <!-- Bottom -->
+  <div id="clearRow" class="clear-row" style="display:none">
+    <button class="btn-ghost" onclick="clearAll()">Start over</button>
+  </div>
+
+  <div class="footer">
+    <span class="kbd-hint" id="kbdHint" style="display:none">Space = play/pause · ← → = step</span>
+    <a href="https://github.com/dabirdwell/gif-studio" class="footer-link" target="_blank">GitHub</a>
+    <span class="footer-sep">·</span>
+    <span class="footer-credit">by <a href="https://humanityandai.com" target="_blank" class="footer-link">Humanity and AI</a></span>
+  </div>
+</div>
+
+<style>
+.drop-zone {
+  border: 2.5px dashed #c9bfb2;
+  border-radius: 18px;
+  padding: 3.5rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  background: rgba(255,255,255,0.35);
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+.drop-zone.active { border-color: #8b7355; background: rgba(139,115,85,0.07); }
+.drop-zone.has-frames { padding: 1.2rem; }
+.drop-icon { font-size: 2.8rem; margin-bottom: 10px; opacity: 0.35; transition: transform 0.3s; }
+.drop-zone.active .drop-icon { transform: scale(1.15); }
+.drop-text { font-size: 1.05rem; color: #6b5e52; font-weight: 500; }
+.drop-hint { font-size: 0.82rem; color: #b0a599; margin-top: 6px; }
+
+.filmstrip {
+  display: flex; gap: 10px; overflow-x: auto; padding: 12px 4px;
+  margin-bottom: 1.5rem; scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.filmstrip::-webkit-scrollbar { height: 6px; }
+.filmstrip::-webkit-scrollbar-thumb { background: #c9bfb2; border-radius: 3px; }
+.filmstrip::-webkit-scrollbar-track { background: transparent; }
+
+.frame-card {
+  position: relative; border-radius: 12px; overflow: hidden;
+  border: 2.5px solid transparent; background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08); cursor: grab;
+  flex-shrink: 0; transition: all 0.2s ease;
+  user-select: none; -webkit-user-select: none;
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+.frame-card.active { border-color: #8b7355; box-shadow: 0 3px 14px rgba(139,115,85,0.2); }
+.frame-card.dragging { opacity: 0.4; transform: scale(0.88); }
+.frame-card.drag-over { border-color: #a68d6e; }
+.frame-card img { width: 110px; height: 82px; object-fit: cover; display: block; pointer-events: none; }
+.frame-label {
+  font-size: 0.68rem; color: #9a8e82; text-align: center;
+  padding: 4px 0; font-weight: 500;
+}
+.frame-delete {
+  position: absolute; top: 4px; right: 4px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(50,40,30,0.6); color: #fff; border: none;
+  cursor: pointer; font-size: 14px; line-height: 22px;
+  text-align: center; opacity: 0; transition: opacity 0.2s;
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.frame-card:hover .frame-delete { opacity: 1; }
+
+.preview-area {
+  background: #fff; border-radius: 16px; padding: 18px;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.06); margin-bottom: 1.5rem;
+  text-align: center; animation: fadeIn 0.3s ease;
+}
+.preview-img {
+  max-width: 100%; max-height: 420px; border-radius: 10px;
+  object-fit: contain; display: block; margin: 0 auto;
+  transition: opacity 0.15s;
+}
+.preview-controls {
+  margin-top: 12px; display: flex; justify-content: center;
+  align-items: center; gap: 12px;
+}
+.play-btn {
+  font-family: 'DM Sans', sans-serif; padding: 7px 18px;
+  border-radius: 8px; border: none; font-size: 0.84rem;
+  cursor: pointer; font-weight: 500; transition: all 0.2s;
+  min-width: 90px;
+}
+.play-btn.playing { background: #e8e0d6; color: #5c4f42; }
+.play-btn.paused { background: #8b7355; color: #fff; }
+.frame-counter { font-size: 0.8rem; color: #9a8e82; }
+.icon-btn {
+  font-family: 'DM Sans', sans-serif; padding: 6px 12px;
+  border-radius: 8px; border: 1.5px solid #d8cfc4;
+  background: transparent; color: #8b7355; font-size: 0.9rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.icon-btn:hover { background: #f0ebe4; border-color: #8b7355; }
+
+.controls {
+  background: rgba(255,255,255,0.5); border-radius: 16px;
+  padding: 1.5rem 1.8rem; margin-bottom: 1.5rem;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.control-row {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 14px;
+}
+.control-row:last-child { margin-bottom: 0; }
+.control-label { font-size: 0.85rem; font-weight: 500; color: #5c4f42; min-width: 50px; }
+.control-value { font-size: 0.8rem; color: #9a8e82; min-width: 55px; text-align: right; }
+.control-options { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.slider {
+  flex: 1; accent-color: #8b7355; height: 6px;
+  -webkit-appearance: none; appearance: none; background: #ddd5ca;
+  border-radius: 3px; outline: none;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px;
+  border-radius: 50%; background: #8b7355; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.loop-select {
+  font-family: 'DM Sans', sans-serif; padding: 7px 14px;
+  border-radius: 8px; border: 1.5px solid #c9bfb2;
+  background: #fff; color: #5c4f42; font-size: 0.84rem; cursor: pointer;
+}
+.toggle-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.82rem; color: #6b5e52; cursor: pointer;
+}
+.toggle-label input { accent-color: #8b7355; width: 15px; height: 15px; }
+.toggle-text { user-select: none; }
+
+.action-row { text-align: center; margin-bottom: 1rem; }
+.btn-primary {
+  font-family: 'DM Sans', sans-serif; padding: 14px 36px;
+  border-radius: 12px; border: none;
+  background: linear-gradient(135deg, #6b5843 0%, #8b7355 100%);
+  color: #fff; font-size: 1rem; font-weight: 500; cursor: pointer;
+  letter-spacing: 0.03em; box-shadow: 0 4px 16px rgba(107,88,67,0.25);
+  transition: all 0.25s; -webkit-tap-highlight-color: transparent;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(107,88,67,0.3); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.5; pointer-events: none; }
+.btn-secondary {
+  font-family: 'DM Sans', sans-serif; padding: 14px 28px;
+  border-radius: 12px; border: 1.5px solid #c9bfb2;
+  background: transparent; color: #6b5843; font-size: 0.92rem;
+  font-weight: 500; cursor: pointer; transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: #8b7355; background: rgba(139,115,85,0.05); }
+.btn-ghost {
+  font-family: 'DM Sans', sans-serif; padding: 10px 20px;
+  border-radius: 10px; border: none; background: transparent;
+  color: #b0a599; font-size: 0.84rem; cursor: pointer; transition: color 0.2s;
+}
+.btn-ghost:hover { color: #6b5843; }
+
+.progress-wrap { text-align: center; margin-bottom: 1.5rem; }
+.progress-bar {
+  width: 100%; height: 6px; border-radius: 3px;
+  background: #e0d8ce; overflow: hidden; margin-bottom: 8px;
+}
+.progress-fill {
+  height: 100%; border-radius: 3px; width: 0%;
+  background: linear-gradient(90deg, #8b7355, #a68d6e);
+  transition: width 0.3s ease;
+}
+.progress-label { font-size: 0.82rem; color: #9a8e82; }
+
+.result-area {
+  background: #fff; border-radius: 16px; padding: 22px;
+  text-align: center; box-shadow: 0 2px 14px rgba(0,0,0,0.06);
+  margin-bottom: 1rem; animation: fadeIn 0.3s ease;
+}
+.result-img {
+  max-width: 100%; max-height: 440px; border-radius: 10px;
+  display: block; margin: 0 auto 8px;
+}
+.result-size { font-size: 0.78rem; color: #b0a599; margin-bottom: 16px; }
+.result-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.clear-row { text-align: center; margin-top: 0.5rem; }
+
+.footer {
+  text-align: center; margin-top: 3rem; padding-top: 1.5rem;
+  border-top: 1px solid #ddd5ca;
+}
+.kbd-hint {
+  display: block; font-size: 0.72rem; color: #c0b7ab;
+  margin-bottom: 10px; letter-spacing: 0.03em;
+}
+.footer-link {
+  color: #8b7355; text-decoration: none; font-size: 0.8rem;
+  transition: color 0.2s;
+}
+.footer-link:hover { color: #5c4f42; text-decoration: underline; }
+.footer-sep { color: #d0c8bc; margin: 0 6px; font-size: 0.8rem; }
+.footer-credit { font-size: 0.8rem; color: #9a8e82; }
+
+@media (max-width: 600px) {
+  .app { padding: 1.5rem 1rem 3rem; }
+  h1 { font-size: 2rem; }
+  .drop-zone { padding: 2.5rem 1rem; }
+  .frame-card img { width: 85px; height: 64px; }
+  .controls { padding: 1.2rem; }
+  .control-row { flex-wrap: wrap; gap: 10px; }
+  .btn-primary { padding: 14px 28px; width: 100%; }
+  .btn-secondary { width: 100%; }
+}
+</style>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// GIF Studio — State & UI
+// ═══════════════════════════════════════════════════════
+
+let frames = [];
+let speed = 500, outputWidth = 800, previewIdx = 0;
+let playing = false, playInterval = null;
+let gifBlobUrl = null, gifBlobSize = 0;
+let dragSrcIdx = null;
+
+const $ = id => document.getElementById(id);
+
+// --- File handling ---
+$('fileInput').addEventListener('change', e => loadImages(e.target.files));
+const dz = $('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('active'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('active'); loadImages(e.dataTransfer.files); });
+
+// Detect desktop for keyboard hint
+if (!('ontouchstart' in window)) $('kbdHint').style.display = 'block';
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (frames.length === 0) return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); stopPlay(); previewIdx = (previewIdx + 1) % frames.length; showFrame(previewIdx); renderFilmstrip(); }
+  if (e.code === 'ArrowLeft') { e.preventDefault(); stopPlay(); previewIdx = (previewIdx - 1 + frames.length) % frames.length; showFrame(previewIdx); renderFilmstrip(); }
+});
+
+function loadImages(fileList) {
+  const imgs = [...fileList].filter(f => f.type.startsWith('image/'));
+  if (!imgs.length) return;
+  imgs.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+  let loaded = 0;
+  const batch = [];
+  imgs.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        batch.push({img, name: file.name, src: e.target.result});
+        if (++loaded === imgs.length) {
+          batch.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+          frames = frames.concat(batch);
+          previewIdx = 0;
+          clearResult();
+          updateUI();
+          startPlay();
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function reverseFrames() {
+  frames.reverse();
+  clearResult();
+  updateUI();
+}
+
+function clearResult() {
+  if (gifBlobUrl) { URL.revokeObjectURL(gifBlobUrl); gifBlobUrl = null; gifBlobSize = 0; }
+}
+
+function updateUI() {
+  const has = frames.length > 0, can = frames.length >= 2;
+  if (has) {
+    dz.classList.add('has-frames');
+    dz.querySelector('.drop-icon').style.display = 'none';
+    dz.querySelector('.drop-text').style.display = 'none';
+    dz.querySelector('.drop-hint').textContent = '+ drop more frames to add';
+  } else {
+    dz.classList.remove('has-frames');
+    dz.querySelector('.drop-icon').style.display = '';
+    dz.querySelector('.drop-text').style.display = '';
+    dz.querySelector('.drop-hint').textContent = 'From Finder, Files, Desktop — JPG, PNG, WebP, anything';
+  }
+  $('filmstrip').style.display = has ? 'flex' : 'none';
+  renderFilmstrip();
+  $('previewArea').style.display = has ? '' : 'none';
+  if (has) showFrame(previewIdx);
+  $('controls').style.display = has ? '' : 'none';
+  $('actionRow').style.display = can && !gifBlobUrl ? '' : 'none';
+  $('clearRow').style.display = can && !gifBlobUrl ? '' : 'none';
+  $('progressWrap').style.display = 'none';
+  $('resultArea').style.display = gifBlobUrl ? '' : 'none';
+  if (gifBlobUrl) {
+    $('resultImg').src = gifBlobUrl;
+    $('resultSize').textContent = formatBytes(gifBlobSize);
+  }
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function renderFilmstrip() {
+  const s = $('filmstrip'); s.innerHTML = '';
+  frames.forEach((f, i) => {
+    const c = document.createElement('div');
+    c.className = 'frame-card' + (i === previewIdx ? ' active' : '');
+    c.draggable = true;
+    c.innerHTML = `<img src="${f.src}" alt="${f.name}"><div class="frame-label">${i+1}</div><button class="frame-delete" onclick="event.stopPropagation();removeFrame(${i})">×</button>`;
+    c.onclick = () => { previewIdx = i; stopPlay(); showFrame(i); renderFilmstrip(); };
+    c.ondragstart = e => { dragSrcIdx = i; c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+    c.ondragover = e => { e.preventDefault(); c.classList.add('drag-over'); };
+    c.ondragleave = () => c.classList.remove('drag-over');
+    c.ondrop = e => { e.preventDefault(); c.classList.remove('drag-over'); if (dragSrcIdx !== null && dragSrcIdx !== i) moveFrame(dragSrcIdx, i); };
+    c.ondragend = () => { dragSrcIdx = null; renderFilmstrip(); };
+    s.appendChild(c);
+  });
+}
+
+function moveFrame(from, to) {
+  const [item] = frames.splice(from, 1);
+  frames.splice(to, 0, item);
+  clearResult(); updateUI();
+}
+
+function removeFrame(idx) {
+  frames.splice(idx, 1);
+  previewIdx = Math.min(previewIdx, Math.max(0, frames.length - 1));
+  clearResult(); updateUI();
+  if (frames.length < 2) stopPlay();
+}
+
+function clearAll() {
+  frames = []; previewIdx = 0; clearResult(); stopPlay(); updateUI();
+}
+
+function showFrame(idx) {
+  if (!frames.length) return;
+  idx = Math.max(0, Math.min(idx, frames.length - 1));
+  previewIdx = idx;
+  $('previewImg').src = frames[idx].src;
+  $('frameCounter').textContent = `Frame ${idx+1} of ${frames.length}`;
+}
+
+function startPlay() {
+  if (frames.length < 2) return;
+  playing = true;
+  $('playBtn').textContent = '❚❚ Pause';
+  $('playBtn').className = 'play-btn playing';
+  if (playInterval) clearInterval(playInterval);
+  playInterval = setInterval(() => {
+    previewIdx = (previewIdx + 1) % frames.length;
+    showFrame(previewIdx);
+    renderFilmstrip();
+  }, speed);
+}
+
+function stopPlay() {
+  playing = false;
+  $('playBtn').textContent = '▶ Play';
+  $('playBtn').className = 'play-btn paused';
+  if (playInterval) { clearInterval(playInterval); playInterval = null; }
+}
+
+function togglePlay() { playing ? stopPlay() : startPlay(); }
+function restartPlay() { if (playing) startPlay(); }
+function resetResult() { clearResult(); updateUI(); startPlay(); }
+
+// ═══════════════════════════════════════════════════════
+// GIF89a Encoder with Floyd-Steinberg dithering
+// ═══════════════════════════════════════════════════════
+
+function quantize(pixels, max) {
+  const counts = new Map();
+  for (let i = 0; i < pixels.length; i += 4) {
+    const k = (pixels[i]<<16)|(pixels[i+1]<<8)|pixels[i+2];
+    counts.set(k, (counts.get(k)||0)+1);
+  }
+  let boxes = [{colors:[...counts.entries()]}];
+  while (boxes.length < max && boxes.length < counts.size) {
+    let bi=0, br=-1;
+    for (let i=0; i<boxes.length; i++) {
+      if (boxes[i].colors.length<2) continue;
+      for (let ch=0; ch<3; ch++) {
+        let mn=255,mx=0;
+        for (const [k] of boxes[i].colors) {
+          const v=(k>>(16-ch*8))&0xFF; mn=Math.min(mn,v); mx=Math.max(mx,v);
+        }
+        if(mx-mn>br){br=mx-mn;bi=i;}
+      }
+    }
+    if (br<=0) break;
+    const box=boxes[bi]; let sc=0,sr=-1;
+    for (let ch=0;ch<3;ch++) {
+      let mn=255,mx=0;
+      for (const [k] of box.colors) { const v=(k>>(16-ch*8))&0xFF; mn=Math.min(mn,v); mx=Math.max(mx,v); }
+      if(mx-mn>sr){sr=mx-mn;sc=ch;}
+    }
+    box.colors.sort((a,b)=>((a[0]>>(16-sc*8))&0xFF)-((b[0]>>(16-sc*8))&0xFF));
+    const m=Math.floor(box.colors.length/2);
+    boxes[bi]={colors:box.colors.slice(0,m)};
+    boxes.push({colors:box.colors.slice(m)});
+  }
+  const pal = boxes.map(b => {
+    let r=0,g=0,bl=0,t=0;
+    for (const [k,c] of b.colors) { r+=((k>>16)&0xFF)*c; g+=((k>>8)&0xFF)*c; bl+=(k&0xFF)*c; t+=c; }
+    return [Math.round(r/t),Math.round(g/t),Math.round(bl/t)];
+  });
+  while (pal.length<max) pal.push([0,0,0]);
+  return pal;
+}
+
+function nearest(pal, r, g, b) {
+  let best=0, bd=Infinity;
+  for (let i=0; i<pal.length; i++) {
+    const dr=pal[i][0]-r, dg=pal[i][1]-g, db=pal[i][2]-b;
+    const d=dr*dr+dg*dg+db*db;
+    if(d<bd){bd=d;best=i;}
+  }
+  return best;
+}
+
+// Floyd-Steinberg dithering — distributes quantization error to neighbors
+function ditherFrame(pixels, w, h, pal) {
+  const r = new Float32Array(w*h), g = new Float32Array(w*h), b = new Float32Array(w*h);
+  for (let i=0; i<w*h; i++) { r[i]=pixels[i*4]; g[i]=pixels[i*4+1]; b[i]=pixels[i*4+2]; }
+  const idx = new Uint8Array(w*h);
+  for (let y=0; y<h; y++) {
+    for (let x=0; x<w; x++) {
+      const p = y*w+x;
+      const cr=Math.max(0,Math.min(255,Math.round(r[p])));
+      const cg=Math.max(0,Math.min(255,Math.round(g[p])));
+      const cb=Math.max(0,Math.min(255,Math.round(b[p])));
+      const ci = nearest(pal, cr, cg, cb);
+      idx[p] = ci;
+      const er=cr-pal[ci][0], eg=cg-pal[ci][1], eb=cb-pal[ci][2];
+      if (x+1<w)         { r[p+1]+=er*7/16; g[p+1]+=eg*7/16; b[p+1]+=eb*7/16; }
+      if (y+1<h) {
+        if (x>0)          { r[p+w-1]+=er*3/16; g[p+w-1]+=eg*3/16; b[p+w-1]+=eb*3/16; }
+                            r[p+w]+=er*5/16;   g[p+w]+=eg*5/16;   b[p+w]+=eb*5/16;
+        if (x+1<w)         { r[p+w+1]+=er*1/16; g[p+w+1]+=eg*1/16; b[p+w+1]+=eb*1/16; }
+      }
+    }
+  }
+  return idx;
+}
+
+// Simple nearest-color mapping (no dithering)
+function mapFrame(pixels, w, h, pal) {
+  const idx = new Uint8Array(w*h);
+  for (let i=0; i<idx.length; i++) idx[i] = nearest(pal, pixels[i*4], pixels[i*4+1], pixels[i*4+2]);
+  return idx;
+}
+
+function lzw(indices, minCS) {
+  const cc=1<<minCS, eoi=cc+1;
+  let cs=minCS+1, nc=eoi+1;
+  let tbl=new Map(); for(let i=0;i<cc;i++) tbl.set(''+i,i);
+  const out=[]; let bits=0,bc=0;
+  function wb(code,sz){bits|=(code<<bc);bc+=sz;while(bc>=8){out.push(bits&0xFF);bits>>=8;bc-=8;}}
+  wb(cc,cs);
+  let cur=''+indices[0];
+  for(let i=1;i<indices.length;i++){
+    const nx=cur+','+indices[i];
+    if(tbl.has(nx)){cur=nx;}
+    else{
+      wb(tbl.get(cur),cs);
+      if(nc<4096){tbl.set(nx,nc++);if(nc>(1<<cs)&&cs<12)cs++;}
+      if(nc>=4096){wb(cc,cs);tbl=new Map();for(let j=0;j<cc;j++)tbl.set(''+j,j);cs=minCS+1;nc=eoi+1;}
+      cur=''+indices[i];
+    }
+  }
+  wb(tbl.get(cur),cs); wb(eoi,cs);
+  if(bc>0) out.push(bits&0xFF);
+  return new Uint8Array(out);
+}
+
+function encodeGIF(imgs, w, h, delay, loop, dither) {
+  const cvs=document.createElement('canvas'); cvs.width=w; cvs.height=h;
+  const ctx=cvs.getContext('2d');
+  const allPx=[], framePx=[];
+  for (const img of imgs) {
+    ctx.clearRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+    const d=ctx.getImageData(0,0,w,h); framePx.push(d.data);
+    const step=Math.max(1,Math.floor(d.data.length/4/6000));
+    for(let i=0;i<d.data.length;i+=4*step) allPx.push(d.data[i],d.data[i+1],d.data[i+2],255);
+  }
+  const pal=quantize(new Uint8Array(allPx),256);
+  const o=[];
+  const w8=b=>o.push(b), w16=v=>{o.push(v&0xFF);o.push((v>>8)&0xFF);};
+  const ws=s=>{for(let i=0;i<s.length;i++)o.push(s.charCodeAt(i));};
+  ws('GIF89a'); w16(w); w16(h); w8(0xF7); w8(0); w8(0);
+  for(const [r,g,b] of pal){w8(r);w8(g);w8(b);}
+  w8(0x21);w8(0xFF);w8(11);ws('NETSCAPE2.0');w8(3);w8(1);w16(loop);w8(0);
+  const dCs=Math.round(delay/10);
+  for(let f=0;f<imgs.length;f++){
+    w8(0x21);w8(0xF9);w8(4);w8(0);w16(dCs);w8(0);w8(0);
+    w8(0x2C);w16(0);w16(0);w16(w);w16(h);w8(0);
+    const idx = dither ? ditherFrame(framePx[f],w,h,pal) : mapFrame(framePx[f],w,h,pal);
+    w8(8);
+    const d=lzw(idx,8);
+    for(let i=0;i<d.length;i+=255){const c=Math.min(255,d.length-i);w8(c);for(let j=0;j<c;j++)w8(d[i+j]);}
+    w8(0);
+  }
+  w8(0x3B);
+  return new Uint8Array(o);
+}
+
+// ═══════════════════════════════════════════════════════
+// Generate & Download
+// ═══════════════════════════════════════════════════════
+
+async function generateGif() {
+  stopPlay();
+  $('actionRow').style.display = 'none';
+  $('clearRow').style.display = 'none';
+  $('progressWrap').style.display = '';
+  $('progressFill').style.width = '5%';
+  $('progressLabel').textContent = 'Preparing frames...';
+
+  await new Promise(r => setTimeout(r, 60));
+
+  try {
+    let imgs = frames.map(f => f.img);
+
+    // Boomerang: append reversed (minus endpoints)
+    if ($('boomerangCheck').checked && imgs.length > 2) {
+      const rev = imgs.slice(1, -1).reverse();
+      imgs = imgs.concat(rev);
+    }
+
+    const ratio = imgs[0].height / imgs[0].width;
+    const w = outputWidth, h = Math.round(w * ratio);
+    const loop = +$('loopSelect').value;
+    const dither = $('ditherCheck').checked;
+
+    $('progressFill').style.width = '15%';
+    $('progressLabel').textContent = 'Building color palette...';
+    await new Promise(r => setTimeout(r, 30));
+
+    $('progressFill').style.width = '30%';
+    $('progressLabel').textContent = dither ? 'Dithering frames...' : 'Mapping colors...';
+    await new Promise(r => setTimeout(r, 30));
+
+    const data = encodeGIF(imgs, w, h, speed, loop, dither);
+
+    $('progressFill').style.width = '95%';
+    $('progressLabel').textContent = 'Wrapping up...';
+    await new Promise(r => setTimeout(r, 100));
+
+    const blob = new Blob([data], {type:'image/gif'});
+    gifBlobUrl = URL.createObjectURL(blob);
+    gifBlobSize = blob.size;
+
+    $('progressFill').style.width = '100%';
+    await new Promise(r => setTimeout(r, 200));
+    updateUI();
+  } catch(e) {
+    console.error('GIF encoding failed:', e);
+    alert('Something went wrong — try a smaller output size or fewer frames.');
+    $('actionRow').style.display = '';
+    $('clearRow').style.display = '';
+  }
+  $('progressWrap').style.display = 'none';
+}
+
+function downloadGif() {
+  if (!gifBlobUrl) return;
+  const a = document.createElement('a');
+  a.href = gifBlobUrl;
+  a.download = 'animation.gif';
+  a.click();
+}
+</script>
+</body>
+</html>
