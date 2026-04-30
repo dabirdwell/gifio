@@ -133,9 +133,9 @@ h1 {
   <div id="elemSection" class="elem-section" style="display:none">
     <div class="style-header">
       <span class="style-title">Background</span>
-      <select id="elemLayer" class="loop-select" onchange="clearResult()" title="Compositing layer">
-        <option value="behind">Behind</option>
+      <select id="elemLayer" class="loop-select" aria-label="Element compositing layer" onchange="clearResult(); if(this.value==='behind' && activeElement!=='none') showHint('✦ Behind mode shows through transparent areas — try Overlay for photos')" title="Compositing layer">
         <option value="overlay">Overlay</option>
+        <option value="behind">Behind</option>
       </select>
     </div>
     <div id="elemPicker" class="preset-picker"></div>
@@ -1248,12 +1248,16 @@ function selectElement(key) {
   clearResult();
   renderElements();
   showFrame(previewIdx);
+  // Intelligence: hint about behind vs overlay for opaque images
+  if (key !== 'none' && $('elemLayer').value === 'behind') {
+    showHint('✦ Behind mode shows through transparent areas — try Overlay for photos');
+  }
 }
 
 function compositeElement(ctx, w, h, frameIdx, totalFrames, layer) {
   const el = ELEMENTS[activeElement];
   if (!el || !el.render) return;
-  const target = $('elemLayer') ? $('elemLayer').value : 'behind';
+  const target = $('elemLayer') ? $('elemLayer').value : 'overlay';
   if (target !== layer) return;
   
   // Save context, render element, restore
