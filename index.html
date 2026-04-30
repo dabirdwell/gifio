@@ -603,11 +603,30 @@ const $ = id => document.getElementById(id);
 $('fileInput').addEventListener('change', e => loadImages(e.target.files));
 const dz = $('dropZone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('active'));
+dz.addEventListener('dragleave', () => { dz.classList.remove('active'); const fi = $('fileInput'); if (fi) fi.style.pointerEvents = ''; });
 dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('active'); loadImages(e.dataTransfer.files); });
 
 // Detect desktop for keyboard hint
 if (!('ontouchstart' in window)) $('kbdHint').style.display = 'block';
+
+
+// ═══ iOS/iPad drag-and-drop compatibility ═══
+// The file input overlay blocks drag events. Toggle it off during drags.
+document.addEventListener('dragenter', function(e) {
+  const fi = $('fileInput');
+  if (fi) fi.style.pointerEvents = 'none';
+});
+document.addEventListener('dragend', function() {
+  const fi = $('fileInput');
+  if (fi) fi.style.pointerEvents = '';
+});
+document.addEventListener('drop', function() {
+  setTimeout(function() {
+    const fi = $('fileInput');
+    if (fi) fi.style.pointerEvents = '';
+  }, 100);
+});
+// Also restore on dragleave from the drop zone
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
