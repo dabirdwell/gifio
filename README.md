@@ -93,3 +93,6 @@ Building tools that are delightfully light, genuinely useful, and respect the pe
 ## License
 
 MIT — do whatever you want with it.
+---
+
+<p align="center"><em>Æ</em></p>
