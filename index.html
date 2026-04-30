@@ -682,8 +682,8 @@ function smartDefaults() {
     setTimeout(() => showHint('✦ Portrait images? Try Square or 4:3 crop'), 9000);
   }
 
-  // Detect faces for title card
-  if ('FaceDetector' in window) detectFace();
+  // Detect faces for title card (silent — never breaks the experience)
+  try { detectFace().catch(() => {}); } catch(e) {}
 
   // Re-analyze frame differences if smart timing is on
   if ($('smartTimingCheck').checked) {
@@ -1470,7 +1470,8 @@ async function detectFace() {
 }
 
 function renderFaceOnTitle(ctx, w, h, face, srcImg) {
-  if (!face || !$('titleFaceCheck').checked) return;
+  try {
+  if (!face || !srcImg || !$('titleFaceCheck') || !$('titleFaceCheck').checked) return;
 
   // Expand the crop region for head + shoulders
   const pad = face.width * 0.6;
@@ -1517,6 +1518,7 @@ function renderFaceOnTitle(ctx, w, h, face, srcImg) {
   ctx.strokeStyle = 'rgba(255,255,255,0.2)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
+  } catch(e) { /* silent */ }
 }
 
 function toggleTitleCard() {
@@ -1588,9 +1590,7 @@ function generateTitleFrame(w, h) {
   }
 
   // Render face portrait if detected
-  if (detectedFace && frames.length > 0) {
-    renderFaceOnTitle(ctx, w, h, detectedFace, frames[0].img);
-  }
+  try { if (detectedFace && frames.length > 0) renderFaceOnTitle(ctx, w, h, detectedFace, frames[0].img); } catch(e) {}
 
   // Shift text down when face is shown
   // (already positioned, face renders in upper area)
