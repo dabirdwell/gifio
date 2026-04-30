@@ -35,7 +35,7 @@ Your images never leave your computer. Everything runs locally in JavaScript.
 - Neon Pulse — alternating complementary hues
 - Plus a Customize panel with brightness, contrast, saturation, warmth, vignette, and grain
 
-**7 background elements:**
+**10 background elements:**
 - Sunrise — gradient sky with rising sun and lens glow
 - Moonrise — night sky with twinkling stars and crescent arc
 - Rain — streaking droplets, unique per frame
@@ -43,13 +43,21 @@ Your images never leave your computer. Everything runs locally in JavaScript.
 - Sparkle — cross-shaped highlights that twinkle in and out
 - Confetti — colorful shapes falling through
 - Color Sweep — smooth gradient that shifts across frames
+- Fireflies — warm glowing dots that drift and pulse
+- Aurora — layered undulating bands of green-cyan light
+- Hearts — floating heart shapes rising gently
 - Overlay or Behind compositing modes
 
 **Timing intelligence:**
 - Smooth loop — cross-fades the end into the beginning for seamless cycling
 - Hold first / Hold last — pause on the opening or closing frame
 - Smart timing — analyzes visual difference between frames and varies speed automatically. Moments with big changes get more time; similar frames move quickly. Creates natural rhythm from your content.
+- Boomerang ease — slows naturally at the turnaround point
 - Smart boomerang interaction (smooth loop defers when boomerang is on)
+
+**Aspect ratio crop:**
+- Original, Square (1:1), 4:3, Widescreen (16:9), Portrait (9:16), 3:2
+- Center-crop keeps content centered regardless of source aspect ratio
 
 **Quietly smart:**
 - Auto-suggests speed, size, and filename based on your images
