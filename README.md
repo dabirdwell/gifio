@@ -1,8 +1,12 @@
-# Gifio
+<p align="center">
+  <img src="mark.svg" alt="Gifio — frames interpolating from geometry to organic form" width="500">
+</p>
 
-A free, private GIF maker that runs entirely in your browser. No uploads, no servers, no accounts.
+<h1 align="center">Gifio</h1>
 
-**[→ Open Gifio](https://dabirdwell.github.io/gifio/)**
+<p align="center">A free, private GIF maker that runs entirely in your browser.<br>No uploads, no servers, no accounts.</p>
+
+<p align="center"><strong><a href="https://dabirdwell.github.io/gifio/">→ Open Gifio</a></strong></p>
 
 ---
 
