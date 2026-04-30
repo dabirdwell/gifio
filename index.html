@@ -128,6 +128,19 @@ h1 {
     </div>
   </div>
 
+
+  <!-- Compositing Elements -->
+  <div id="elemSection" class="elem-section" style="display:none">
+    <div class="style-header">
+      <span class="style-title">Background</span>
+      <select id="elemLayer" class="loop-select" onchange="clearResult()" title="Compositing layer">
+        <option value="behind">Behind</option>
+        <option value="overlay">Overlay</option>
+      </select>
+    </div>
+    <div id="elemPicker" class="preset-picker"></div>
+  </div>
+
   <!-- Controls -->
   <div id="controls" class="controls" style="display:none">
     <div class="control-row">
@@ -412,6 +425,23 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 .footer-credit { font-size: 0.8rem; color: #9a8e82; }
 
 
+
+.elem-section { margin-bottom: 1.5rem; animation: fadeIn 0.3s ease; }
+.elem-chip { flex-shrink: 0; cursor: pointer; text-align: center; user-select: none; }
+.elem-chip canvas {
+  width: 64px; height: 48px; border-radius: 8px; display: block;
+  border: 2px solid transparent; transition: border-color 0.2s;
+  background: #2a2520;
+}
+.elem-chip.active canvas { border-color: #8b7355; }
+.elem-chip:hover canvas { border-color: #c9bfb2; }
+.elem-chip.active:hover canvas { border-color: #8b7355; }
+.elem-chip-label {
+  font-size: 0.62rem; color: #9a8e82; margin-top: 3px;
+  white-space: nowrap; max-width: 68px; overflow: hidden; text-overflow: ellipsis;
+}
+.elem-chip.active .elem-chip-label { color: #5c4f42; font-weight: 500; }
+
 .style-section { margin-bottom: 1.5rem; animation: fadeIn 0.3s ease; }
 .style-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .style-title { font-size: 0.85rem; font-weight: 500; color: #5c4f42; }
@@ -580,6 +610,10 @@ function smartDefaults() {
   if (frames.length >= 5 && !$('smoothLoopCheck').checked) {
     setTimeout(() => showHint('✦ Try Smooth loop for a seamless cycle'), 4000);
   }
+  // Intelligence: suggest backgrounds for smaller frame counts
+  if (frames.length >= 2 && frames.length <= 5 && activeElement === 'none') {
+    setTimeout(() => showHint('✦ Try a background element for atmosphere'), 7000);
+  }
 
   // Re-analyze frame differences if smart timing is on
   if ($('smartTimingCheck').checked) {
@@ -667,7 +701,8 @@ function updateUI() {
   if (has) showFrame(previewIdx);
   $('controls').style.display = has ? '' : 'none';
   $('styleSection').style.display = has ? '' : 'none';
-  if (has) renderPresets();
+  $('elemSection').style.display = has ? '' : 'none';
+  if (has) { renderPresets(); renderElements(); }
   $('actionRow').style.display = can && !gifBlobUrl ? '' : 'none';
   $('clearRow').style.display = can && !gifBlobUrl ? '' : 'none';
   $('progressWrap').style.display = 'none';
@@ -715,23 +750,26 @@ function removeFrame(idx) {
 }
 
 function clearAll() {
-  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; clearResult(); stopPlay(); updateUI();
 }
 
 function showFrame(idx) {
   if (!frames.length) return;
   idx = Math.max(0, Math.min(idx, frames.length - 1));
   previewIdx = idx;
-  const hasStyle = activePreset !== 'original' || Object.values(customValues).some(v => v !== 0);
+  const hasStyle = activePreset !== 'original' || activeElement !== 'none' || Object.values(customValues).some(v => v !== 0);
   if (hasStyle) {
     const img = frames[idx].img;
     const w = Math.min(img.naturalWidth, 600);
     const h = Math.round(w * img.naturalHeight / img.naturalWidth);
     presetCanvas.width = w; presetCanvas.height = h;
+    // Composite: behind element → frame → style → overlay element
+    compositeElement(presetCtx, w, h, idx, frames.length, 'behind');
     presetCtx.drawImage(img, 0, 0, w, h);
     const imgData = presetCtx.getImageData(0, 0, w, h);
     applyStyle(imgData.data, w, h, idx, frames.length);
     presetCtx.putImageData(imgData, 0, 0);
+    compositeElement(presetCtx, w, h, idx, frames.length, 'overlay');
     $('previewImg').src = presetCanvas.toDataURL();
   } else {
     $('previewImg').src = frames[idx].src;
@@ -1056,6 +1094,176 @@ function handleSmartTiming() {
   updateDuration();
 }
 
+
+// ═══════════════════════════════════════════════════════
+// Background compositing — procedural visual elements
+// ═══════════════════════════════════════════════════════
+
+let activeElement = 'none';
+// Seeded random for consistent particle positions across renders
+function seededRandom(seed) { let s = seed; return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; }; }
+
+const ELEMENTS = {
+  none: { name: 'None', render: null },
+
+  sunrise: { name: 'Sunrise', render: (ctx, w, h, fi, n) => {
+    const t = fi / (n - 1 || 1);
+    // Sky gradient darkens at bottom
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+    const r = Math.round(25 + 200 * t), g = Math.round(15 + 120 * t), b = Math.round(60 + 80 * (1-t));
+    skyGrad.addColorStop(0, `rgb(${r},${g},${Math.min(255,b+80)})`);
+    skyGrad.addColorStop(1, `rgb(${Math.max(0,r-40)},${Math.max(0,g-30)},${Math.max(0,b-20)})`);
+    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, w, h);
+    // Sun rises from bottom
+    const sunY = h * (1.1 - t * 0.8);
+    const sunR = w * 0.06;
+    const glow = ctx.createRadialGradient(w*0.7, sunY, sunR*0.5, w*0.7, sunY, sunR*4);
+    glow.addColorStop(0, `rgba(255,220,100,${0.6*t})`);
+    glow.addColorStop(1, 'rgba(255,220,100,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+    ctx.beginPath(); ctx.arc(w*0.7, sunY, sunR, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,240,180,${0.8*t})`; ctx.fill();
+  }},
+
+  moonrise: { name: 'Moonrise', render: (ctx, w, h, fi, n) => {
+    const t = fi / (n - 1 || 1);
+    // Night sky
+    ctx.fillStyle = `rgb(${Math.round(8+10*t)},${Math.round(10+15*t)},${Math.round(30+20*t)})`;
+    ctx.fillRect(0, 0, w, h);
+    // Stars
+    const rng = seededRandom(42);
+    for (let i = 0; i < 40; i++) {
+      const sx = rng() * w, sy = rng() * h * 0.7;
+      const twinkle = 0.3 + 0.7 * Math.abs(Math.sin(fi * 0.5 + i));
+      ctx.beginPath(); ctx.arc(sx, sy, 1 + rng(), 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,240,${twinkle * 0.7})`; ctx.fill();
+    }
+    // Moon arc
+    const moonY = h * (0.9 - t * 0.6);
+    const moonR = w * 0.04;
+    const moonGlow = ctx.createRadialGradient(w*0.3, moonY, moonR, w*0.3, moonY, moonR*5);
+    moonGlow.addColorStop(0, 'rgba(200,210,240,0.3)');
+    moonGlow.addColorStop(1, 'rgba(200,210,240,0)');
+    ctx.fillStyle = moonGlow; ctx.fillRect(0, 0, w, h);
+    ctx.beginPath(); ctx.arc(w*0.3, moonY, moonR, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(230,235,250,0.9)'; ctx.fill();
+    // Crescent shadow
+    ctx.beginPath(); ctx.arc(w*0.3 + moonR*0.4, moonY - moonR*0.1, moonR*0.85, 0, Math.PI*2);
+    ctx.fillStyle = `rgb(${Math.round(8+10*t)},${Math.round(10+15*t)},${Math.round(30+20*t)})`; ctx.fill();
+  }},
+
+  rain: { name: 'Rain', render: (ctx, w, h, fi, n) => {
+    const rng = seededRandom(fi * 1000 + 7);
+    for (let i = 0; i < 80; i++) {
+      const x = rng() * w;
+      const y = (rng() * h * 1.3 + fi * h * 0.15) % (h * 1.1) - h * 0.1;
+      const len = 8 + rng() * 14;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 1, y + len);
+      ctx.strokeStyle = 'rgba(180,200,220,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  }},
+
+  snow: { name: 'Snow', render: (ctx, w, h, fi, n) => {
+    const rng = seededRandom(99);
+    for (let i = 0; i < 50; i++) {
+      const baseX = rng() * w, baseY = rng() * h;
+      const drift = Math.sin(fi * 0.3 + i * 0.7) * 8;
+      const fall = (fi * h * 0.08 + baseY) % (h * 1.2) - h * 0.1;
+      const r = 1.5 + rng() * 2.5;
+      ctx.beginPath(); ctx.arc(baseX + drift, fall, r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${0.4 + rng()*0.4})`; ctx.fill();
+    }
+  }},
+
+  sparkle: { name: 'Sparkle', render: (ctx, w, h, fi, n) => {
+    const rng = seededRandom(123);
+    for (let i = 0; i < 25; i++) {
+      const x = rng() * w, y = rng() * h;
+      const phase = Math.sin(fi * 0.8 + i * 2.1);
+      if (phase > 0.3) {
+        const size = 2 + phase * 3;
+        const alpha = (phase - 0.3) * 1.2;
+        ctx.beginPath(); ctx.moveTo(x, y-size); ctx.lineTo(x, y+size);
+        ctx.strokeStyle = `rgba(255,255,230,${alpha})`; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x-size, y); ctx.lineTo(x+size, y);
+        ctx.stroke();
+      }
+    }
+  }},
+
+  confetti: { name: 'Confetti', render: (ctx, w, h, fi, n) => {
+    const rng = seededRandom(fi * 500 + 55);
+    const colors = ['#E8807E','#E89050','#D4AC38','#70B860','#50A8CC','#7070D0','#9868B8'];
+    for (let i = 0; i < 30; i++) {
+      const x = rng() * w;
+      const y = (rng() * h * 1.5 + fi * h * 0.1) % (h * 1.3) - h * 0.15;
+      const rot = rng() * Math.PI;
+      const size = 3 + rng() * 5;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot + fi * 0.2);
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.globalAlpha = 0.6 + rng() * 0.3;
+      ctx.fillRect(-size/2, -size/4, size, size/2);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }},
+
+  gradient: { name: 'Color sweep', render: (ctx, w, h, fi, n) => {
+    const hue = (fi / (n || 1)) * 360;
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, `hsla(${hue},60%,50%,0.25)`);
+    grad.addColorStop(1, `hsla(${(hue+60)%360},60%,40%,0.2)`);
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+  }},
+};
+
+
+// ═══ Element picker UI ═══
+
+function renderElements() {
+  const picker = $('elemPicker');
+  picker.innerHTML = '';
+  Object.keys(ELEMENTS).forEach(key => {
+    const chip = document.createElement('div');
+    chip.className = 'elem-chip' + (key === activeElement ? ' active' : '');
+    const cvs = document.createElement('canvas');
+    cvs.width = 128; cvs.height = 96;
+    const ctx = cvs.getContext('2d');
+    // Dark bg for element preview
+    ctx.fillStyle = '#1e1a16'; ctx.fillRect(0, 0, 128, 96);
+    const el = ELEMENTS[key];
+    if (el.render) el.render(ctx, 128, 96, 2, 7);
+    const label = document.createElement('div');
+    label.className = 'elem-chip-label';
+    label.textContent = el.name;
+    chip.appendChild(cvs);
+    chip.appendChild(label);
+    chip.onclick = () => selectElement(key);
+    picker.appendChild(chip);
+  });
+}
+
+function selectElement(key) {
+  activeElement = key;
+  clearResult();
+  renderElements();
+  showFrame(previewIdx);
+}
+
+function compositeElement(ctx, w, h, frameIdx, totalFrames, layer) {
+  const el = ELEMENTS[activeElement];
+  if (!el || !el.render) return;
+  const target = $('elemLayer') ? $('elemLayer').value : 'behind';
+  if (target !== layer) return;
+  
+  // Save context, render element, restore
+  ctx.save();
+  if (layer === 'overlay') ctx.globalAlpha = 0.7;
+  el.render(ctx, w, h, frameIdx, totalFrames);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 async function buildTimingPlan(imgList) {
   // Returns { images: [...], delays: [...] } with per-frame timing
   let images = [...imgList];
@@ -1232,10 +1440,13 @@ function encodeGIF(imgs, w, h, delay, loop, dither, perFrameDelays) {
   const ctx=cvs.getContext('2d');
   const allPx=[], framePx=[];
   for (let fi=0; fi<imgs.length; fi++) {
-    ctx.clearRect(0,0,w,h); ctx.drawImage(imgs[fi],0,0,w,h);
+    ctx.clearRect(0,0,w,h);
+    compositeElement(ctx, w, h, fi, imgs.length, 'behind');
+    ctx.drawImage(imgs[fi],0,0,w,h);
     const d=ctx.getImageData(0,0,w,h);
     applyStyle(d.data, w, h, fi, imgs.length);
     ctx.putImageData(d, 0, 0);
+    compositeElement(ctx, w, h, fi, imgs.length, 'overlay');
     framePx.push(ctx.getImageData(0,0,w,h).data);
     const step=Math.max(1,Math.floor(d.data.length/4/6000));
     for(let i=0;i<d.data.length;i+=4*step) allPx.push(d.data[i],d.data[i+1],d.data[i+2],255);
