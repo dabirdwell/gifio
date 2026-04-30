@@ -110,6 +110,24 @@ h1 {
     <div id="smartHint" class="smart-hint" style="display:none"></div>
   </div>
 
+
+  <!-- Style Presets -->
+  <div id="styleSection" class="style-section" style="display:none">
+    <div class="style-header">
+      <span class="style-title">Style</span>
+      <button class="customize-toggle" onclick="toggleCustomize()">Customize ▾</button>
+    </div>
+    <div id="presetPicker" class="preset-picker"></div>
+    <div id="customizePanel" class="customize-panel" style="display:none">
+      <div class="control-row"><label class="control-label">Brightness</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('brightness',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label">Contrast</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('contrast',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label">Saturation</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('saturation',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label">Warmth</label><input type="range" class="slider" min="-50" max="50" value="0" oninput="setCustom('warmth',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label">Vignette</label><input type="range" class="slider" min="0" max="100" value="0" oninput="setCustom('vignette',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label">Grain</label><input type="range" class="slider" min="0" max="60" value="0" oninput="setCustom('grain',+this.value,this)"><span class="control-value">0</span></div>
+    </div>
+  </div>
+
   <!-- Controls -->
   <div id="controls" class="controls" style="display:none">
     <div class="control-row">
@@ -372,6 +390,26 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 .footer-sep { color: #d0c8bc; margin: 0 6px; font-size: 0.8rem; }
 .footer-credit { font-size: 0.8rem; color: #9a8e82; }
 
+
+.style-section { margin-bottom: 1.5rem; animation: fadeIn 0.3s ease; }
+.style-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.style-title { font-size: 0.85rem; font-weight: 500; color: #5c4f42; }
+.customize-toggle { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: #9a8e82; background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s; }
+.customize-toggle:hover { color: #5c4f42; background: rgba(0,0,0,0.04); }
+.preset-picker { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; -webkit-overflow-scrolling: touch; }
+.preset-picker::-webkit-scrollbar { height: 4px; }
+.preset-picker::-webkit-scrollbar-thumb { background: #d8cfc4; border-radius: 2px; }
+.preset-chip { flex-shrink: 0; cursor: pointer; text-align: center; transition: all 0.2s; user-select: none; }
+.preset-chip canvas { width: 64px; height: 48px; border-radius: 8px; display: block; border: 2px solid transparent; transition: border-color 0.2s; }
+.preset-chip.active canvas { border-color: #8b7355; }
+.preset-chip:hover canvas { border-color: #c9bfb2; }
+.preset-chip.active:hover canvas { border-color: #8b7355; }
+.preset-chip-label { font-size: 0.62rem; color: #9a8e82; margin-top: 3px; white-space: nowrap; max-width: 68px; overflow: hidden; text-overflow: ellipsis; }
+.preset-chip.active .preset-chip-label { color: #5c4f42; font-weight: 500; }
+.customize-panel { background: rgba(255,255,255,0.4); border-radius: 12px; padding: 1rem 1.2rem; margin-top: 8px; animation: fadeIn 0.2s ease; }
+.customize-panel .control-row { margin-bottom: 10px; }
+.customize-panel .control-row:last-child { margin-bottom: 0; }
+
 @media (max-width: 600px) {
   .app { padding: 1.5rem 1rem 3rem; }
   h1 { font-size: 2rem; }
@@ -381,6 +419,7 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
   .control-row { flex-wrap: wrap; gap: 10px; }
   .btn-primary { padding: 14px 28px; width: 100%; }
   .btn-secondary { width: 100%; }
+  .preset-chip canvas { width: 52px; height: 39px; }
 }
 </style>
 
@@ -491,9 +530,26 @@ function smartDefaults() {
   // Smart filename: find common prefix
   smartName = deriveFilename();
 
-  // Gentle hint for photo content (high-res = probably photos)
+  // Intelligence: detect photo content and color characteristics
   if (!hintShown && nativeW >= 1500) {
-    showHint('✦ Photos detected — dithering is on for smoother colors');
+    const sc = document.createElement('canvas');
+    const sw = 100, sh = Math.round(100 * frames[0].img.naturalHeight / frames[0].img.naturalWidth);
+    sc.width = sw; sc.height = sh;
+    const sx = sc.getContext('2d');
+    sx.drawImage(frames[0].img, 0, 0, sw, sh);
+    const sd = sx.getImageData(0, 0, sw, sh).data;
+    let satSum = 0, samples = 0;
+    for (let i = 0; i < sd.length; i += 16) {
+      const mx = Math.max(sd[i], sd[i+1], sd[i+2]);
+      const mn = Math.min(sd[i], sd[i+1], sd[i+2]);
+      satSum += mx > 0 ? (mx - mn) / mx : 0;
+      samples++;
+    }
+    if (satSum / samples < 0.08) {
+      showHint('✦ B&W source detected — try Film noir or Cyanotype for extra character');
+    } else {
+      showHint('✦ Photos detected — dithering is on for smoother colors');
+    }
     hintShown = true;
   }
 
@@ -565,6 +621,8 @@ function updateUI() {
   $('previewArea').style.display = has ? '' : 'none';
   if (has) showFrame(previewIdx);
   $('controls').style.display = has ? '' : 'none';
+  $('styleSection').style.display = has ? '' : 'none';
+  if (has) renderPresets();
   $('actionRow').style.display = can && !gifBlobUrl ? '' : 'none';
   $('clearRow').style.display = can && !gifBlobUrl ? '' : 'none';
   $('progressWrap').style.display = 'none';
@@ -612,14 +670,27 @@ function removeFrame(idx) {
 }
 
 function clearAll() {
-  frames = []; previewIdx = 0; smartName = 'animation'; clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; clearResult(); stopPlay(); updateUI();
 }
 
 function showFrame(idx) {
   if (!frames.length) return;
   idx = Math.max(0, Math.min(idx, frames.length - 1));
   previewIdx = idx;
-  $('previewImg').src = frames[idx].src;
+  const hasStyle = activePreset !== 'original' || Object.values(customValues).some(v => v !== 0);
+  if (hasStyle) {
+    const img = frames[idx].img;
+    const w = Math.min(img.naturalWidth, 600);
+    const h = Math.round(w * img.naturalHeight / img.naturalWidth);
+    presetCanvas.width = w; presetCanvas.height = h;
+    presetCtx.drawImage(img, 0, 0, w, h);
+    const imgData = presetCtx.getImageData(0, 0, w, h);
+    applyStyle(imgData.data, w, h, idx, frames.length);
+    presetCtx.putImageData(imgData, 0, 0);
+    $('previewImg').src = presetCanvas.toDataURL();
+  } else {
+    $('previewImg').src = frames[idx].src;
+  }
   $('frameCounter').textContent = `Frame ${idx+1} of ${frames.length}`;
 }
 
@@ -646,6 +717,201 @@ function stopPlay() {
 function togglePlay() { playing ? stopPlay() : startPlay(); }
 function restartPlay() { if (playing) startPlay(); }
 function resetResult() { clearResult(); updateUI(); startPlay(); }
+
+
+// ═══════════════════════════════════════════════════════
+// Style presets — one-click looks
+// ═══════════════════════════════════════════════════════
+
+let activePreset = 'original';
+let customValues = { brightness:0, contrast:0, saturation:0, warmth:0, vignette:0, grain:0 };
+const presetCanvas = document.createElement('canvas');
+const presetCtx = presetCanvas.getContext('2d');
+
+const PRESETS = {
+  original:      { name: 'Original',      fn: null },
+  filmNoir:      { name: 'Film noir',     fn: (d) => { grayscale(d); adjustContrast(d, 50); adjustBrightness(d, 8); } },
+  silverGelatin: { name: 'Silver',        fn: (d) => { grayscale(d); adjustContrast(d, 15); adjustBrightness(d, 5); } },
+  sepia:         { name: 'Sepia',         fn: (d) => { grayscale(d); tint(d, 40, 20, -15); } },
+  cyanotype:     { name: 'Cyanotype',     fn: (d) => { grayscale(d); tint(d, -20, -5, 35); adjustContrast(d, 10); } },
+  faded:         { name: 'Faded',         fn: (d) => { adjustContrast(d, -20); adjustBrightness(d, 15); tint(d, 8, 6, -4); } },
+  goldenHour:    { name: 'Golden hour',   fn: (d) => { tint(d, 25, 10, -15); adjustContrast(d, 10); adjustBrightness(d, 8); } },
+  midnight:      { name: 'Midnight',      fn: (d) => { tint(d, -15, -5, 20); adjustContrast(d, 15); adjustBrightness(d, -20); } },
+  overcast:      { name: 'Overcast',      fn: (d) => { adjustSaturation(d, -50); adjustContrast(d, -10); adjustBrightness(d, 5); } },
+  candy:         { name: 'Candy',         fn: (d) => { adjustSaturation(d, 50); adjustContrast(d, 15); adjustBrightness(d, 10); } },
+  rainbow:       { name: 'Rainbow',       type: 'perframe', fn: (d, i, n) => { hueRotate(d, (i / n) * 360); } },
+  sunset:        { name: 'Sunset drift',  type: 'perframe', fn: (d, i, n) => { const t = i/(n-1||1); tint(d, Math.round(30-50*t), Math.round(15-25*t), Math.round(-20+45*t)); } },
+  neon:          { name: 'Neon pulse',    type: 'perframe', fn: (d, i, n) => { adjustSaturation(d, 40); hueRotate(d, (i/n)*180 + (i%2)*180); } },
+};
+
+// ═══ Pixel math ═══
+
+function grayscale(d) {
+  for (let i = 0; i < d.length; i += 4) {
+    const l = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+    d[i] = d[i+1] = d[i+2] = l;
+  }
+}
+
+function adjustBrightness(d, v) {
+  const a = v * 2.55;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]   = Math.max(0, Math.min(255, d[i] + a));
+    d[i+1] = Math.max(0, Math.min(255, d[i+1] + a));
+    d[i+2] = Math.max(0, Math.min(255, d[i+2] + a));
+  }
+}
+
+function adjustContrast(d, v) {
+  const f = (259 * (v + 255)) / (255 * (259 - v));
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]   = Math.max(0, Math.min(255, f * (d[i] - 128) + 128));
+    d[i+1] = Math.max(0, Math.min(255, f * (d[i+1] - 128) + 128));
+    d[i+2] = Math.max(0, Math.min(255, f * (d[i+2] - 128) + 128));
+  }
+}
+
+function adjustSaturation(d, v) {
+  const a = 1 + v / 100;
+  for (let i = 0; i < d.length; i += 4) {
+    const gray = d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114;
+    d[i]   = Math.max(0, Math.min(255, gray + a * (d[i] - gray)));
+    d[i+1] = Math.max(0, Math.min(255, gray + a * (d[i+1] - gray)));
+    d[i+2] = Math.max(0, Math.min(255, gray + a * (d[i+2] - gray)));
+  }
+}
+
+function tint(d, r, g, b) {
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]   = Math.max(0, Math.min(255, d[i] + r));
+    d[i+1] = Math.max(0, Math.min(255, d[i+1] + g));
+    d[i+2] = Math.max(0, Math.min(255, d[i+2] + b));
+  }
+}
+
+function hueRotate(d, deg) {
+  const rad = deg * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const m = [
+    0.213+0.787*cos-0.213*sin, 0.715-0.715*cos-0.715*sin, 0.072-0.072*cos+0.928*sin,
+    0.213-0.213*cos+0.143*sin, 0.715+0.285*cos+0.140*sin, 0.072-0.072*cos-0.283*sin,
+    0.213-0.213*cos-0.787*sin, 0.715-0.715*cos+0.715*sin, 0.072+0.928*cos+0.072*sin,
+  ];
+  for (let i = 0; i < d.length; i += 4) {
+    const r=d[i], g=d[i+1], b=d[i+2];
+    d[i]   = Math.max(0, Math.min(255, m[0]*r + m[1]*g + m[2]*b));
+    d[i+1] = Math.max(0, Math.min(255, m[3]*r + m[4]*g + m[5]*b));
+    d[i+2] = Math.max(0, Math.min(255, m[6]*r + m[7]*g + m[8]*b));
+  }
+}
+
+function addVignette(d, w, h, strength) {
+  const cx = w/2, cy = h/2, maxR = Math.sqrt(cx*cx + cy*cy);
+  const s = strength / 100;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dx = x-cx, dy = y-cy;
+      const dist = Math.sqrt(dx*dx + dy*dy) / maxR;
+      const darken = 1 - dist * dist * s;
+      const i = (y*w+x)*4;
+      d[i]   *= darken; d[i+1] *= darken; d[i+2] *= darken;
+    }
+  }
+}
+
+function addGrain(d, amount) {
+  const s = amount * 0.8;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * s;
+    d[i]   = Math.max(0, Math.min(255, d[i] + n));
+    d[i+1] = Math.max(0, Math.min(255, d[i+1] + n));
+    d[i+2] = Math.max(0, Math.min(255, d[i+2] + n));
+  }
+}
+
+
+// ═══ Apply style to pixel data ═══
+
+function applyStyle(data, w, h, frameIdx, totalFrames) {
+  const p = PRESETS[activePreset];
+  if (!p || !p.fn) {
+    // Even with 'original', apply custom adjustments if any are set
+  } else if (p.type === 'perframe') {
+    p.fn(data, frameIdx, totalFrames);
+  } else {
+    p.fn(data);
+  }
+  // Apply custom adjustments on top
+  if (customValues.brightness !== 0) adjustBrightness(data, customValues.brightness);
+  if (customValues.contrast !== 0) adjustContrast(data, customValues.contrast);
+  if (customValues.saturation !== 0) adjustSaturation(data, customValues.saturation);
+  if (customValues.warmth !== 0) tint(data, customValues.warmth, Math.round(customValues.warmth*0.4), -customValues.warmth);
+  if (customValues.vignette > 0) addVignette(data, w, h, customValues.vignette);
+  if (customValues.grain > 0) addGrain(data, customValues.grain);
+}
+
+function renderPresetThumbnail(canvas, img, presetKey, frameIdx, totalFrames) {
+  const tw = 128, th = 96;
+  canvas.width = tw; canvas.height = th;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, tw, th);
+  const p = PRESETS[presetKey];
+  if (p && p.fn) {
+    const imgData = ctx.getImageData(0, 0, tw, th);
+    if (p.type === 'perframe') {
+      p.fn(imgData.data, frameIdx || 0, totalFrames || 1);
+    } else {
+      p.fn(imgData.data);
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+}
+
+function renderPresets() {
+  const picker = $('presetPicker');
+  picker.innerHTML = '';
+  if (!frames.length) return;
+  const img = frames[previewIdx].img;
+  Object.keys(PRESETS).forEach(key => {
+    const chip = document.createElement('div');
+    chip.className = 'preset-chip' + (key === activePreset ? ' active' : '');
+    const cvs = document.createElement('canvas');
+    renderPresetThumbnail(cvs, img, key, previewIdx, frames.length);
+    const label = document.createElement('div');
+    label.className = 'preset-chip-label';
+    label.textContent = PRESETS[key].name;
+    chip.appendChild(cvs);
+    chip.appendChild(label);
+    chip.onclick = () => { selectPreset(key); };
+    picker.appendChild(chip);
+  });
+}
+
+function selectPreset(key) {
+  activePreset = key;
+  clearResult();
+  renderPresets();
+  showFrame(previewIdx);
+  // Quiet intelligence: suggest dither off for B&W presets
+  if (['filmNoir','silverGelatin','cyanotype'].includes(key) && $('ditherCheck').checked) {
+    showHint('✦ Tonal presets often look crisp without dithering');
+  }
+}
+
+function toggleCustomize() {
+  const panel = $('customizePanel');
+  const btn = document.querySelector('.customize-toggle');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? '' : 'none';
+  btn.textContent = open ? 'Customize ▴' : 'Customize ▾';
+}
+
+function setCustom(key, val, input) {
+  customValues[key] = val;
+  input.nextElementSibling.textContent = val;
+  clearResult();
+  showFrame(previewIdx);
+}
 
 // ═══════════════════════════════════════════════════════
 // Gifio GIF89a Encoder with Floyd-Steinberg dithering
@@ -760,9 +1026,12 @@ function encodeGIF(imgs, w, h, delay, loop, dither) {
   const cvs=document.createElement('canvas'); cvs.width=w; cvs.height=h;
   const ctx=cvs.getContext('2d');
   const allPx=[], framePx=[];
-  for (const img of imgs) {
-    ctx.clearRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
-    const d=ctx.getImageData(0,0,w,h); framePx.push(d.data);
+  for (let fi=0; fi<imgs.length; fi++) {
+    ctx.clearRect(0,0,w,h); ctx.drawImage(imgs[fi],0,0,w,h);
+    const d=ctx.getImageData(0,0,w,h);
+    applyStyle(d.data, w, h, fi, imgs.length);
+    ctx.putImageData(d, 0, 0);
+    framePx.push(ctx.getImageData(0,0,w,h).data);
     const step=Math.max(1,Math.floor(d.data.length/4/6000));
     for(let i=0;i<d.data.length;i+=4*step) allPx.push(d.data[i],d.data[i+1],d.data[i+2],255);
   }
@@ -820,7 +1089,7 @@ async function generateGif() {
     await new Promise(r => setTimeout(r, 30));
 
     $('progressFill').style.width = '30%';
-    $('progressLabel').textContent = dither ? 'Dithering frames...' : 'Mapping colors...';
+    $('progressLabel').textContent = dither ? 'Styling & dithering frames...' : 'Styling frames...';
     await new Promise(r => setTimeout(r, 30));
 
     const data = encodeGIF(imgs, w, h, speed, loop, dither);
