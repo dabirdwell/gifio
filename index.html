@@ -95,6 +95,30 @@ h1 {
     <input type="file" id="fileInput" accept="image/*" multiple hidden>
   </div>
 
+  <!-- Title Card -->
+  <div id="titleCardSection" class="title-card-section" style="display:none">
+    <div class="style-header">
+      <span class="style-title">Title card</span>
+      <label class="toggle-label">
+        <input type="checkbox" id="titleCardCheck" aria-label="Add title card" onchange="toggleTitleCard()">
+        <span class="toggle-text">Add</span>
+      </label>
+    </div>
+    <div id="titleCardControls" style="display:none">
+      <input type="text" id="titleText" class="title-input" placeholder="Your title here" oninput="clearResult()" maxlength="60">
+      <input type="text" id="subtitleText" class="title-input subtitle-input" placeholder="Subtitle (optional)" oninput="clearResult()" maxlength="80">
+      <div class="control-options" style="margin-top:8px">
+        <select id="titleStyle" class="loop-select" aria-label="Title card style" onchange="clearResult()">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="warm">Warm</option>
+          <option value="cool">Cool</option>
+          <option value="match">Match first frame</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
   <!-- Filmstrip -->
   <div id="filmstrip" class="filmstrip" style="display:none"></div>
 
@@ -441,6 +465,17 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 
 
 
+
+.title-card-section { margin-bottom: 1rem; animation: fadeIn 0.3s ease; }
+.title-input {
+  font-family: 'DM Sans', sans-serif; width: 100%; padding: 10px 14px;
+  border: 1.5px solid #d8cfc4; border-radius: 10px; background: rgba(255,255,255,0.6);
+  color: #3a3530; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+  margin-bottom: 6px;
+}
+.title-input:focus { border-color: #8b7355; }
+.title-input::placeholder { color: #c0b7ab; }
+.subtitle-input { font-size: 0.82rem; }
 .elem-section { margin-bottom: 1.5rem; animation: fadeIn 0.3s ease; }
 .elem-chip { flex-shrink: 0; cursor: pointer; text-align: center; user-select: none; }
 .elem-chip canvas {
@@ -704,6 +739,7 @@ function updateDuration() {
     totalMs = frameCount * speed;
   }
   if ($('smoothLoopCheck').checked && !$('boomerangCheck').checked && frameCount >= 4) totalMs += 3 * speed;
+  if ($('titleCardCheck') && $('titleCardCheck').checked && $('titleText') && $('titleText').value.trim()) totalMs += speed * 3;
   if ($('holdFirstCheck').checked) totalMs += 2 * speed;
   if ($('holdLastCheck').checked) totalMs += 2 * speed;
   const sec = (totalMs / 1000).toFixed(1);
@@ -730,6 +766,7 @@ function updateUI() {
   $('controls').style.display = has ? '' : 'none';
   $('styleSection').style.display = has ? '' : 'none';
   $('elemSection').style.display = has ? '' : 'none';
+  $('titleCardSection').style.display = has ? '' : 'none';
   if (has) { renderPresets(); renderElements(); }
   $('actionRow').style.display = can && !gifBlobUrl ? '' : 'none';
   $('clearRow').style.display = can && !gifBlobUrl ? '' : 'none';
@@ -778,7 +815,7 @@ function removeFrame(idx) {
 }
 
 function clearAll() {
-  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('cropSelect'))$('cropSelect').value='original'; clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('titleCardCheck'))$('titleCardCheck').checked=false; if($('titleCardControls'))$('titleCardControls').style.display='none'; if($('titleText'))$('titleText').value=''; if($('subtitleText'))$('subtitleText').value=''; if($('cropSelect'))$('cropSelect').value='original'; clearResult(); stopPlay(); updateUI();
 }
 
 function showFrame(idx) {
@@ -1367,6 +1404,85 @@ function compositeElement(ctx, w, h, frameIdx, totalFrames, layer) {
   ctx.restore();
 }
 
+
+// ═══════════════════════════════════════════════════════
+// Title card generation
+// ═══════════════════════════════════════════════════════
+
+function toggleTitleCard() {
+  // Intelligence: auto-enable Hold First for title cards
+  if ($('titleCardCheck').checked && !$('holdFirstCheck').checked) {
+    $('holdFirstCheck').checked = true;
+    showHint('\u2726 Hold first enabled \u2014 gives your title card a moment to breathe');
+  }
+  const on = $('titleCardCheck').checked;
+  $('titleCardControls').style.display = on ? '' : 'none';
+  if (on && !$('titleText').value) $('titleText').focus();
+  clearResult();
+  updateDuration();
+}
+
+function generateTitleFrame(w, h) {
+  const text = $('titleText').value.trim();
+  if (!text) return null;
+  const subtitle = $('subtitleText').value.trim();
+  const style = $('titleStyle').value;
+
+  const cvs = document.createElement('canvas');
+  cvs.width = w; cvs.height = h;
+  const ctx = cvs.getContext('2d');
+
+  // Background
+  const bgs = {
+    dark:  ['#1e1a16', '#f0ebe4', '#c9bfb2'],
+    light: ['#faf6f1', '#3a3530', '#8b7355'],
+    warm:  ['#2a1f14', '#f0d0a0', '#c0a070'],
+    cool:  ['#0e1520', '#c0d8e8', '#7098b8'],
+  };
+
+  if (style === 'match' && frames.length > 0) {
+    // Sample first frame's dominant tone
+    ctx.drawImage(frames[0].img, 0, 0, w, h);
+    const sample = ctx.getImageData(0, 0, w, h).data;
+    let rSum=0, gSum=0, bSum=0, count=0;
+    for (let i=0; i<sample.length; i+=64) {
+      rSum+=sample[i]; gSum+=sample[i+1]; bSum+=sample[i+2]; count++;
+    }
+    const r=Math.round(rSum/count), g=Math.round(gSum/count), b=Math.round(bSum/count);
+    // Darken for background, lighten for text
+    ctx.fillStyle = `rgb(${Math.round(r*0.3)},${Math.round(g*0.3)},${Math.round(b*0.3)})`;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = `rgb(${Math.min(255,r+120)},${Math.min(255,g+120)},${Math.min(255,b+120)})`;
+  } else {
+    const [bg, fg, sub] = bgs[style] || bgs.dark;
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = fg;
+  }
+
+  // Title text
+  const titleSize = Math.max(16, Math.min(w * 0.06, 42));
+  ctx.font = `300 italic ${titleSize}px Fraunces, Georgia, serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const ty = subtitle ? h * 0.44 : h * 0.5;
+  ctx.fillText(text, w/2, ty, w * 0.85);
+
+  // Subtitle
+  if (subtitle) {
+    const subColor = style === 'match' ? ctx.fillStyle :
+      (bgs[style] || bgs.dark)[2];
+    ctx.fillStyle = subColor;
+    const subSize = Math.max(12, titleSize * 0.5);
+    ctx.font = `400 ${subSize}px "DM Sans", sans-serif`;
+    ctx.fillText(subtitle, w/2, h * 0.56, w * 0.85);
+  }
+
+  // Create image from canvas
+  const img = new Image();
+  img.src = cvs.toDataURL();
+  img.width = w; img.height = h;
+  return img;
+}
+
 async function buildTimingPlan(imgList) {
   // Returns { images: [...], delays: [...] } with per-frame timing
   let images = [...imgList];
@@ -1618,6 +1734,18 @@ async function generateGif() {
 
   try {
     let imgs = frames.map(f => f.img);
+
+    // Title card: generate and prepend
+    if ($('titleCardCheck') && $('titleCardCheck').checked) {
+      const refImg = frames[0].img;
+      const tw = outputWidth;
+      const cropVal = $('cropSelect') ? $('cropSelect').value : 'original';
+      let th;
+      if (cropVal === 'original') th = Math.round(tw * refImg.naturalHeight / refImg.naturalWidth);
+      else { const [cw,ch] = cropVal.split(':').map(Number); th = Math.round(tw * ch / cw); }
+      const titleImg = generateTitleFrame(tw, th);
+      if (titleImg) imgs.unshift(titleImg);
+    }
 
     // Boomerang: append reversed (minus endpoints)
     if ($('boomerangCheck').checked && imgs.length > 2) {
