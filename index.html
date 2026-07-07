@@ -156,7 +156,7 @@ h1 {
       <button id="playBtn" class="play-btn paused" onclick="togglePlay()">▶ Play</button>
       <span id="frameCounter" class="frame-counter">Frame 1 of 1</span>
       <span id="durationEst" class="duration-est"></span>
-      <button class="icon-btn" onclick="reverseFrames()" title="Reverse frame order" aria-label="Reverse frame order">⇆</button>
+      <button class="icon-btn" onclick="reverseFrames()" title="Reverse frame order" aria-label="Reverse frame order" data-tip="Reverses the order of all your frames. Last becomes first.">⇆</button>
     </div>
     <div id="smartHint" class="smart-hint" style="display:none"></div>
   </div>
@@ -165,17 +165,17 @@ h1 {
   <!-- Style Presets -->
   <div id="styleSection" class="style-section" style="display:none">
     <div class="style-header">
-      <span class="style-title">Style</span>
+      <span class="style-title" data-tip="One-click color treatments. Your originals are never modified.">Style</span>
       <button class="customize-toggle" onclick="toggleCustomize()">Customize ▾</button>
     </div>
     <div id="presetPicker" class="preset-picker"></div>
     <div id="customizePanel" class="customize-panel" style="display:none">
-      <div class="control-row"><label class="control-label">Brightness</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('brightness',+this.value,this)"><span class="control-value">0</span></div>
-      <div class="control-row"><label class="control-label">Contrast</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('contrast',+this.value,this)"><span class="control-value">0</span></div>
-      <div class="control-row"><label class="control-label">Saturation</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('saturation',+this.value,this)"><span class="control-value">0</span></div>
-      <div class="control-row"><label class="control-label">Warmth</label><input type="range" class="slider" min="-50" max="50" value="0" oninput="setCustom('warmth',+this.value,this)"><span class="control-value">0</span></div>
-      <div class="control-row"><label class="control-label">Vignette</label><input type="range" class="slider" min="0" max="100" value="0" oninput="setCustom('vignette',+this.value,this)"><span class="control-value">0</span></div>
-      <div class="control-row"><label class="control-label">Grain</label><input type="range" class="slider" min="0" max="60" value="0" oninput="setCustom('grain',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label" data-tip="Shifts all pixels lighter or darker. Subtle goes a long way.">Brightness</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('brightness',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label" data-tip="Pushes lights lighter and darks darker. High contrast = dramatic.">Contrast</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('contrast',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label" data-tip="Color intensity. Negative = muted/B&W. Positive = vivid pop.">Saturation</label><input type="range" class="slider" min="-100" max="100" value="0" oninput="setCustom('saturation',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label" data-tip="Shifts between cool blue and warm amber tones.">Warmth</label><input type="range" class="slider" min="-50" max="50" value="0" oninput="setCustom('warmth',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label" data-tip="Darkens the edges, drawing focus to the center.">Vignette</label><input type="range" class="slider" min="0" max="100" value="0" oninput="setCustom('vignette',+this.value,this)"><span class="control-value">0</span></div>
+      <div class="control-row"><label class="control-label" data-tip="Adds film grain texture. Subtle amounts feel analog and organic.">Grain</label><input type="range" class="slider" min="0" max="60" value="0" oninput="setCustom('grain',+this.value,this)"><span class="control-value">0</span></div>
     </div>
   </div>
 
@@ -183,7 +183,7 @@ h1 {
   <!-- Compositing Elements -->
   <div id="elemSection" class="elem-section" style="display:none">
     <div class="style-header">
-      <span class="style-title">Background</span>
+      <span class="style-title" data-tip="Animated elements layered over or behind your frames.">Background</span>
       <select id="elemLayer" class="loop-select" aria-label="Element compositing layer" onchange="clearResult(); if(this.value==='behind' && activeElement!=='none') showHint('✦ Behind mode shows through transparent areas — try Overlay for photos')" title="Compositing layer">
         <option value="overlay">Overlay</option>
         <option value="behind">Behind</option>
@@ -195,32 +195,56 @@ h1 {
   <!-- Controls -->
   <div id="controls" class="controls" style="display:none">
     <div class="control-row">
-      <label class="control-label">Speed</label>
-      <input type="range" id="speedSlider" class="slider" min="50" max="2000" step="50" value="500"
+      <label class="control-label" data-tip="How long each frame shows. Lower = faster. Auto-suggested by frame count.">Speed</label>
+      <input type="range" id="speedSlider" class="slider" min="50" max="2000" step="50" value="400"
              oninput="speed=+this.value; document.getElementById('speedVal').textContent=this.value+'ms'; restartPlay(); clearResult(); updateDuration(); if($('smartTimingCheck').checked)$('speedVal').textContent=this.value+'ms base'">
-      <span id="speedVal" class="control-value">500ms</span>
+      <span id="speedVal" class="control-value">400ms</span>
     </div>
     <div class="control-row">
-      <label class="control-label">Size</label>
+      <label class="control-label" data-tip="Output width in pixels. Larger = sharper but bigger file. 400-600px ideal for sharing.">Size</label>
       <input type="range" id="sizeSlider" class="slider" min="200" max="1200" step="50" value="800"
              oninput="outputWidth=+this.value; document.getElementById('sizeVal').textContent=this.value+'px'; clearResult()">
       <span id="sizeVal" class="control-value">800px</span>
     </div>
     <div class="control-row">
-      <label class="control-label">Crop</label>
-      <div class="control-options">
-        <select id="cropSelect" class="loop-select" aria-label="Aspect ratio crop" onchange="clearResult()">
-          <option value="original">Original</option>
-          <option value="1:1">Square</option>
-          <option value="4:3">4:3</option>
-          <option value="16:9">Widescreen</option>
-          <option value="9:16">Portrait</option>
-          <option value="3:2">3:2</option>
-        </select>
+      <label class="control-label" data-tip="Center-crops all frames to this ratio. Square for Instagram, Widescreen for Twitter, Portrait for Stories.">Crop</label>
+      <div class="crop-options" id="cropOptions">
+        <label class="crop-radio active" data-tip="Use your images as-is, no cropping">
+          <input type="radio" name="crop" value="original" checked onchange="setCrop(this.value)">
+          <div class="crop-box crop-original"><span class="crop-icon">↔</span></div>
+          <span class="crop-label">Original</span>
+        </label>
+        <label class="crop-radio" data-tip="1:1 — Instagram posts, profile pictures">
+          <input type="radio" name="crop" value="1:1" onchange="setCrop(this.value)">
+          <div class="crop-box" style="width:32px;height:32px;"></div>
+          <span class="crop-label">1:1</span>
+        </label>
+        <label class="crop-radio" data-tip="4:3 — Classic photo ratio, presentations">
+          <input type="radio" name="crop" value="4:3" onchange="setCrop(this.value)">
+          <div class="crop-box" style="width:36px;height:27px;"></div>
+          <span class="crop-label">4:3</span>
+        </label>
+        <label class="crop-radio" data-tip="16:9 — Twitter headers, YouTube, widescreen">
+          <input type="radio" name="crop" value="16:9" onchange="setCrop(this.value)">
+          <div class="crop-box" style="width:42px;height:24px;"></div>
+          <span class="crop-label">16:9</span>
+        </label>
+        <label class="crop-radio" data-tip="9:16 — Instagram/TikTok Stories, Reels">
+          <input type="radio" name="crop" value="9:16" onchange="setCrop(this.value)">
+          <div class="crop-box" style="width:20px;height:36px;"></div>
+          <span class="crop-label">9:16</span>
+        </label>
       </div>
+      <select id="cropSelect" style="display:none" aria-hidden="true">
+        <option value="original" selected>Original</option>
+        <option value="1:1">1:1</option>
+        <option value="4:3">4:3</option>
+        <option value="16:9">16:9</option>
+        <option value="9:16">9:16</option>
+      </select>
     </div>
     <div class="control-row">
-      <label class="control-label">Loop</label>
+      <label class="control-label" data-tip="How many times the GIF repeats. Forever is standard.">Loop</label>
       <div class="control-options">
         <select id="loopSelect" class="loop-select" onchange="clearResult()">
           <option value="0" selected>Forever</option>
@@ -229,33 +253,33 @@ h1 {
           <option value="5">5×</option>
         </select>
         <label class="toggle-label">
-          <input type="checkbox" id="boomerangCheck" onchange="clearResult(); updateDuration()">
-          <span class="toggle-text">Boomerang</span>
+          <input type="checkbox" id="boomerangCheck" onchange="clearResult(); updateDuration(); restartPlay()">
+          <span class="toggle-text" data-tip="Plays forward then backward — that satisfying pendulum. Best with 3-8 frames.">Boomerang</span>
         </label>
         <label class="toggle-label">
           <input type="checkbox" id="ditherCheck" checked onchange="clearResult()">
-          <span class="toggle-text">Dither</span>
+          <span class="toggle-text" data-tip="Scatters dots to fake smooth gradients. Almost always better on photos. Off for pixel art.">Dither</span>
         </label>
       </div>
     </div>
     <div class="control-row">
-      <label class="control-label">Timing</label>
+      <label class="control-label" data-tip="Fine-tune how the GIF moves through time.">Timing</label>
       <div class="control-options">
         <label class="toggle-label">
           <input type="checkbox" id="smoothLoopCheck" aria-label="Smooth loop transition" onchange="handleSmoothToggle()">
-          <span class="toggle-text">Smooth loop</span>
+          <span class="toggle-text" data-tip="Cross-fades last frame into first. The loop point disappears.">Smooth loop</span>
         </label>
         <label class="toggle-label" title="Pause on first frame">
-          <input type="checkbox" id="holdFirstCheck" aria-label="Hold on first frame" onchange="clearResult(); updateDuration()">
-          <span class="toggle-text">Hold first</span>
+          <input type="checkbox" id="holdFirstCheck" aria-label="Hold on first frame" onchange="clearResult(); updateDuration(); restartPlay()">
+          <span class="toggle-text" data-tip="Pauses 3× longer on first frame. Perfect for reveals.">Hold first</span>
         </label>
         <label class="toggle-label" title="Pause on last frame">
-          <input type="checkbox" id="holdLastCheck" aria-label="Hold on last frame" onchange="clearResult(); updateDuration()">
-          <span class="toggle-text">Hold last</span>
+          <input type="checkbox" id="holdLastCheck" aria-label="Hold on last frame" onchange="clearResult(); updateDuration(); restartPlay()">
+          <span class="toggle-text" data-tip="Pauses 3× longer on last frame. Great for punchlines.">Hold last</span>
         </label>
         <label class="toggle-label" title="Vary speed by visual change">
           <input type="checkbox" id="smartTimingCheck" aria-label="Smart timing based on visual difference" onchange="handleSmartTiming()">
-          <span class="toggle-text">Smart timing</span>
+          <span class="toggle-text" data-tip="Varies speed by visual change between frames. Natural rhythm.">Smart timing</span>
         </label>
       </div>
     </div>
@@ -282,7 +306,7 @@ h1 {
 
   <!-- Bottom -->
   <div id="clearRow" class="clear-row" style="display:none">
-    <button class="btn-ghost" onclick="clearAll()">Start over</button>
+    <button class="btn-ghost" id="clearBtn" onclick="confirmClear(this)">Start over</button>
   </div>
 
   <div class="footer">
@@ -309,7 +333,7 @@ h1 {
   text-align: center;
   cursor: pointer;
   background: rgba(255,255,255,0.35);
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, background 0.3s ease, padding 0.3s ease;
   margin-bottom: 1.5rem;
 }
 .drop-zone.active { border-color: #8b7355; background: rgba(139,115,85,0.07); }
@@ -326,6 +350,7 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
   display: flex; gap: 10px; overflow-x: auto; padding: 12px 4px;
   margin-bottom: 1.5rem; scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 .filmstrip::-webkit-scrollbar { height: 6px; }
 .filmstrip::-webkit-scrollbar-thumb { background: #c9bfb2; border-radius: 3px; }
@@ -335,14 +360,23 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
   position: relative; border-radius: 12px; overflow: hidden;
   border: 2.5px solid transparent; background: #fff;
   box-shadow: 0 2px 10px rgba(0,0,0,0.08); cursor: grab;
-  flex-shrink: 0; transition: all 0.2s ease;
+  flex-shrink: 0; transition: transform 0.25s cubic-bezier(0.2,0.8,0.3,1), border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
   user-select: none; -webkit-user-select: none;
   animation: fadeIn 0.25s ease;
+  will-change: transform;
 }
 @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 .frame-card.active { border-color: #8b7355; box-shadow: 0 3px 14px rgba(139,115,85,0.2); }
-.frame-card.dragging { opacity: 0.4; transform: scale(0.88); }
-.frame-card.drag-over { border-color: #a68d6e; }
+.frame-card.dragging { opacity: 0.35; transform: scale(0.85); transition: opacity 0.15s, transform 0.15s; }
+.frame-card.nudge-right { transform: translateX(14px); }
+.frame-card.nudge-left { transform: translateX(-14px); }
+.filmstrip .insert-marker {
+  position: absolute; top: 4px; bottom: 4px; width: 3px;
+  background: #8b7355; border-radius: 2px;
+  box-shadow: 0 0 8px rgba(139,115,85,0.4);
+  pointer-events: none; z-index: 10;
+  transition: left 0.2s cubic-bezier(0.2,0.8,0.3,1), opacity 0.15s;
+}
 .frame-card img { width: 110px; height: 82px; object-fit: cover; display: block; pointer-events: none; }
 .frame-label {
   font-size: 0.68rem; color: #9a8e82; text-align: center;
@@ -437,7 +471,7 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
   background: linear-gradient(135deg, #6b5843 0%, #8b7355 100%);
   color: #fff; font-size: 1rem; font-weight: 500; cursor: pointer;
   letter-spacing: 0.03em; box-shadow: 0 4px 16px rgba(107,88,67,0.25);
-  transition: all 0.25s; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.25s, background 0.25s; -webkit-tap-highlight-color: transparent;
 }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(107,88,67,0.3); }
 .btn-primary:active { transform: translateY(0); }
@@ -451,10 +485,73 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 .btn-secondary:hover { border-color: #8b7355; background: rgba(139,115,85,0.05); }
 .btn-ghost {
   font-family: 'DM Sans', sans-serif; padding: 10px 20px;
-  border-radius: 10px; border: none; background: transparent;
-  color: #b0a599; font-size: 0.84rem; cursor: pointer; transition: color 0.2s;
+  border-radius: 10px; border: 1px solid rgba(155,58,40,0.15); background: transparent;
+  color: #9B3A28; font-size: 0.84rem; cursor: pointer; transition: all 0.25s;
+  position: relative;
 }
-.btn-ghost:hover { color: #6b5843; }
+.btn-ghost::before {
+  content: '!';
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: rgba(155,58,40,0.1);
+  pointer-events: none;
+  line-height: 1;
+  transition: color 0.3s;
+}
+.btn-ghost:hover { color: #fff; background: #9B3A28; border-color: #9B3A28; }
+.btn-ghost:hover::before { color: rgba(255,255,255,0.12); }
+
+/* Confirmation state — red glitter trace */
+.btn-ghost.confirming {
+  color: #fff; background: #9B3A28; border-color: transparent;
+  z-index: 1;
+}
+.btn-ghost.confirming::before {
+  color: rgba(255,255,255,0.15);
+  font-size: 3.6rem;
+}
+.btn-ghost.confirming::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 12px;
+  background: conic-gradient(
+    from var(--danger-angle, 0deg),
+    transparent 0%,
+    rgba(220,60,40,0.4) 5%,
+    rgba(255,100,60,0.8) 8%,
+    rgba(255,180,80,0.9) 10%,
+    rgba(255,100,60,0.8) 12%,
+    rgba(220,60,40,0.4) 15%,
+    transparent 20%,
+    transparent 50%,
+    rgba(220,60,40,0.3) 55%,
+    rgba(255,120,80,0.6) 57%,
+    rgba(255,200,100,0.7) 59%,
+    rgba(255,120,80,0.6) 61%,
+    rgba(220,60,40,0.3) 63%,
+    transparent 68%,
+    transparent 100%
+  );
+  z-index: -1;
+  animation: dangerTrace 1.8s linear infinite;
+}
+@keyframes dangerTrace {
+  0% { --danger-angle: 0deg; }
+  100% { --danger-angle: 360deg; }
+}
+@property --danger-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes confirmPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(155,58,40,0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(155,58,40,0); }
+}
 
 .progress-wrap { text-align: center; margin-bottom: 1.5rem; }
 .progress-bar {
@@ -471,7 +568,7 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 .result-area {
   background: #fff; border-radius: 16px; padding: 22px;
   text-align: center; box-shadow: 0 2px 14px rgba(0,0,0,0.06);
-  margin-bottom: 1rem; animation: fadeIn 0.3s ease;
+  margin-bottom: 1rem; position: relative; overflow: hidden;
 }
 .result-img {
   max-width: 100%; max-height: 440px; border-radius: 10px;
@@ -480,6 +577,30 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 .result-size { font-size: 0.78rem; color: #b0a599; margin-bottom: 16px; }
 .result-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 .clear-row { text-align: center; margin-top: 0.5rem; }
+
+/* ═══ Mosaic tile reveal ═══ */
+.reveal-overlay {
+  position: absolute;
+  top: 22px; left: 22px; right: 22px;
+  border-radius: 10px;
+  display: grid;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+  perspective: 800px;
+}
+.reveal-tile {
+  background: #faf6f1;
+  transform-style: preserve-3d;
+  animation: tileFlip 0.6s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+  animation-delay: var(--delay);
+  backface-visibility: hidden;
+}
+@keyframes tileFlip {
+  0% { transform: rotateY(0deg); opacity: 1; }
+  60% { transform: rotateY(110deg); opacity: 0.6; }
+  100% { transform: rotateY(180deg); opacity: 0; }
+}
 
 .footer {
   text-align: center; margin-top: 3rem; padding-top: 1.5rem;
@@ -584,6 +705,518 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
   .btn-primary { padding: 14px 28px; width: 100%; }
   .btn-secondary { width: 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   Gifio Enhancement Layer — Æ, May 2026
+   Tooltips · Help · Alive interface
+   ═══════════════════════════════════════════════════════ */
+
+/* ═══ Tooltips ═══ */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3a3530;
+  color: #f0ebe4;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: 8px;
+  white-space: normal;
+  width: max-content;
+  max-width: 240px;
+  z-index: 1000;
+  pointer-events: none;
+  animation: tipFade 0.2s ease;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+[data-tip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #3a3530;
+  z-index: 1000;
+  pointer-events: none;
+  animation: tipFade 0.2s ease;
+}
+@keyframes tipFade { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+
+/* ═══ Crop visual radio buttons ═══ */
+.crop-options {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
+}
+.crop-radio {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer; padding: 6px 8px; border-radius: 10px;
+  border: 1.5px solid transparent; transition: all 0.2s;
+  position: relative;
+}
+.crop-radio:hover { background: rgba(139,115,85,0.04); }
+.crop-radio.active {
+  border-color: #8b7355; background: rgba(139,115,85,0.06);
+}
+.crop-radio input { display: none; }
+.crop-box {
+  border: 1.5px solid #c9bfb2; border-radius: 4px;
+  background: rgba(139,115,85,0.04);
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.crop-radio.active .crop-box {
+  border-color: #8b7355; background: rgba(139,115,85,0.1);
+}
+.crop-original { width: 36px; height: 28px; }
+.crop-icon { font-size: 0.8rem; color: #9a8e82; }
+.crop-label {
+  font-size: 0.66rem; color: #9a8e82; font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.crop-radio.active .crop-label { color: #5c4f42; font-weight: 600; }
+
+/* ═══ Alive interface ═══ */
+
+/* Create button — tracing border glow */
+.btn-primary {
+  position: relative;
+  z-index: 1;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 15px;
+  background: conic-gradient(
+    from var(--glow-angle, 0deg),
+    transparent 0%,
+    rgba(45,106,79,0.5) 10%,
+    rgba(45,140,90,0.8) 15%,
+    rgba(45,106,79,0.5) 20%,
+    transparent 30%,
+    transparent 100%
+  );
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.4s;
+  animation: glowTrace 3s linear infinite;
+}
+.btn-primary:not(:disabled)::before { opacity: 1; }
+.btn-primary:hover::before { opacity: 0; }
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: inherit;
+  z-index: -1;
+}
+@keyframes glowTrace {
+  0% { --glow-angle: 0deg; }
+  100% { --glow-angle: 360deg; }
+}
+@property --glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Gentle scale pulse replaces old breathe */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); }
+}
+.btn-primary:not(:disabled):not(:hover) {
+  animation: breathe 3s ease-in-out infinite;
+}
+.btn-primary:hover { animation: none; }
+
+/* ═══ 2.5D depth touches ═══ */
+
+/* Control sections lift on hover */
+.control-row {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 10px;
+  padding: 2px 0;
+}
+.control-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+}
+
+/* Style/element chips get depth */
+.preset-chip, .elem-chip {
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+.preset-chip:hover, .elem-chip:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1) !important;
+}
+.preset-chip:active, .elem-chip:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Preview area has depth layers */
+.preview-area {
+  box-shadow: 0 2px 14px rgba(0,0,0,0.06), 0 8px 30px rgba(0,0,0,0.03);
+}
+
+/* Frame cards lift when hovered */
+.frame-card:hover:not(.dragging) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* Drop zone inner shadow for depth */
+.drop-zone {
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.03);
+}
+.drop-zone.has-frames {
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.02);
+}
+
+/* Help button floats */
+.help-btn {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1), 0 6px 20px rgba(0,0,0,0.05);
+}
+.help-btn:hover {
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 4px 18px rgba(107,88,67,0.3), 0 8px 30px rgba(0,0,0,0.08);
+}
+
+/* Crop radio boxes get subtle 3D feel */
+.crop-box {
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.06), 0 1px 0 rgba(255,255,255,0.8);
+}
+.crop-radio.active .crop-box {
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.6), 0 0 8px rgba(139,115,85,0.12);
+}
+.crop-radio:hover .crop-box {
+  transform: scale(1.05);
+  transition: transform 0.15s;
+}
+
+@keyframes dropPulse {
+  0%, 100% { border-color: #c9bfb2; background: rgba(255,255,255,0.35); }
+  50% { border-color: #a08870; background: rgba(139,115,85,0.06); }
+}
+.drop-zone:not(.has-frames) {
+  animation: dropPulse 3s ease-in-out infinite;
+}
+
+@keyframes starSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.drop-zone:not(.has-frames) .drop-icon {
+  animation: starSpin 12s linear infinite;
+}
+
+/* Progress shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.progress-fill {
+  background: linear-gradient(90deg, #8b7355 0%, #a68d6e 30%, #c4a87a 50%, #a68d6e 70%, #8b7355 100%) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* Toggle glow — warm accent when checked */
+.toggle-label input[type="checkbox"]:checked + .toggle-text {
+  color: #5c4f42;
+  font-weight: 600;
+  text-shadow: 0 0 12px rgba(139,115,85,0.3);
+  text-decoration: underline;
+  text-decoration-color: rgba(139,115,85,0.3);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  transition: all 0.3s;
+}
+
+/* Preview alive when playing */
+@keyframes previewPulse {
+  0%, 100% { box-shadow: 0 2px 14px rgba(0,0,0,0.06); }
+  50% { box-shadow: 0 2px 20px rgba(107,88,67,0.15), 0 0 0 2px rgba(139,115,85,0.08); }
+}
+.preview-area.is-playing {
+  animation: previewPulse 3s ease-in-out infinite;
+}
+
+/* Frame counter shifts subtly while playing */
+@keyframes counterShift {
+  0%, 100% { color: #9a8e82; }
+  50% { color: #6b5843; }
+}
+.preview-area.is-playing .frame-counter {
+  animation: counterShift 3s ease-in-out infinite;
+}
+
+/* Play button glow when playing */
+.play-btn.playing {
+  color: #6b5843;
+  text-shadow: 0 0 6px rgba(139,115,85,0.2);
+}
+
+/* Æ footer mark enhancement */
+.ae-mark {
+  position: relative;
+}
+.ae-mark:hover::after {
+  content: 'frames in motion, meaning in between';
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3a3530;
+  color: #c9bfb2;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 400;
+  font-style: italic;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: tipFade 0.3s ease;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  letter-spacing: 0.03em;
+}
+.ae-mark:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: #3a3530;
+  pointer-events: none;
+  animation: tipFade 0.3s ease;
+}
+
+/* Help button */
+.help-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid #c9bfb2;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #8b7355;
+  font-family: 'Fraunces', serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+  font-style: italic;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  transition: all 0.3s;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.help-btn:hover {
+  background: #8b7355;
+  color: #fff;
+  border-color: #8b7355;
+  transform: scale(1.08);
+  box-shadow: 0 4px 18px rgba(107,88,67,0.3);
+}
+
+/* ═══ Help overlay ═══ */
+#helpOverlay {
+  position: fixed; inset: 0;
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  background:
+    linear-gradient(180deg, rgba(250,246,241,0.03) 0%, transparent 50%, rgba(250,246,241,0.03) 100%),
+    repeating-linear-gradient(0deg, #f0ebe4 0px, #f0ebe4 48px, #e0d8ce 48px, #e0d8ce 50px),
+    repeating-linear-gradient(90deg, #f0ebe4 0px, #f0ebe4 48px, #e0d8ce 48px, #e0d8ce 50px);
+  background-color: #f0ebe4;
+}
+#helpOverlay.open { display: flex; }
+#helpOverlay::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent 0px, transparent 48px, rgba(0,0,0,0.04) 48px, rgba(0,0,0,0.04) 50px),
+    repeating-linear-gradient(90deg, transparent 0px, transparent 48px, rgba(0,0,0,0.04) 48px, rgba(0,0,0,0.04) 50px);
+  pointer-events: none;
+}
+#helpOverlay::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center top, rgba(200,180,140,0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.help-card {
+  position: relative;
+  width: 820px;
+  max-width: 92vw;
+  max-height: 88vh;
+  background: rgba(255,255,252,0.97);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.08), 0 20px 60px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.help-header {
+  padding: 20px 28px;
+  background: linear-gradient(180deg, #faf6f1 0%, #f0ebe4 100%);
+  border-bottom: 1px solid #ddd5ca;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.help-header h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 1.3rem;
+  font-weight: 300;
+  font-style: italic;
+  color: #5c4f42;
+  margin: 0;
+}
+.close-help {
+  width: 34px; height: 34px;
+  background: #e8e0d6;
+  border: 1px solid #d0c8bc;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #8b7355;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.close-help:hover { background: #5c4f42; border-color: #5c4f42; color: #fff; }
+
+.help-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1;
+  color: #5c4f42;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+.help-body h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  font-style: italic;
+  color: #5c4f42;
+  margin: 28px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid #e8e0d6;
+}
+.help-body h3:first-child { margin-top: 0; }
+
+.help-note {
+  position: relative;
+  background: linear-gradient(180deg, #fdfbf5, #f5f0e5);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #5c4f42;
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.06), inset 0 0 30px rgba(0,0,0,0.02);
+}
+.help-note::before {
+  content: '✦';
+  position: absolute;
+  top: -6px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: #c9bfb2;
+}
+.help-note .sig {
+  margin-top: 12px;
+  font-size: 0.78rem;
+  color: #9a8e82;
+  text-align: right;
+  font-style: italic;
+}
+
+.help-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.help-item {
+  padding: 14px 16px;
+  background: #faf8f5;
+  border: 1px solid #e8e4de;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.help-item:hover {
+  background: rgba(139,115,85,0.04);
+  border-color: #c9bfb2;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+}
+.help-item h4 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #5c4f42;
+  margin: 0 0 4px;
+}
+.help-item p {
+  font-size: 0.74rem;
+  color: #8b7e72;
+  margin: 0;
+  line-height: 1.5;
+}
+.help-item .try { color: #6a8a4a; font-weight: 500; }
+.help-item .avoid { color: #a06040; font-weight: 500; }
+
+.help-footer {
+  padding: 14px 28px;
+  background: #f5f2ed;
+  border-top: 1px solid #e0dbd4;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #9a8e82;
+}
+.help-footer kbd {
+  display: inline-block;
+  padding: 2px 7px;
+  background: #fff;
+  border: 1px solid #d0c8bc;
+  border-radius: 4px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem;
+  margin: 0 2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+@media (max-width: 600px) {
+  .help-grid { grid-template-columns: 1fr; }
+  .help-body { padding: 18px 20px; }
+  .help-btn { bottom: 14px; right: 14px; width: 38px; height: 38px; font-size: 1.1rem; }
+}
+
 </style>
 
 <script>
@@ -592,7 +1225,7 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 // ═══════════════════════════════════════════════════════
 
 let frames = [];
-let speed = 500, outputWidth = 800, previewIdx = 0;
+let speed = 400, outputWidth = 800, previewIdx = 0;
 let playing = false, playInterval = null;
 let gifBlobUrl = null, gifBlobSize = 0;
 let dragSrcIdx = null;
@@ -699,9 +1332,10 @@ function smartDefaults() {
   let suggested;
   if (n <= 3) suggested = 800;
   else if (n <= 5) suggested = 600;
-  else if (n <= 8) suggested = 400;
-  else if (n <= 15) suggested = 250;
-  else suggested = 150;
+  else if (n <= 8) suggested = 450;
+  else if (n <= 15) suggested = 350;
+  else if (n <= 25) suggested = 250;
+  else suggested = 200;
   speed = suggested;
   $('speedSlider').value = suggested;
   $('speedVal').textContent = suggested + 'ms';
@@ -871,19 +1505,116 @@ function formatBytes(b) {
 
 function renderFilmstrip() {
   const s = $('filmstrip'); s.innerHTML = '';
+  // Insert marker — glowing vertical line
+  let marker = document.createElement('div');
+  marker.className = 'insert-marker';
+  marker.style.opacity = '0';
+  marker.style.left = '0px';
+  s.appendChild(marker);
+
+  let insertIdx = -1;
+
   frames.forEach((f, i) => {
     const c = document.createElement('div');
     c.className = 'frame-card' + (i === previewIdx ? ' active' : '');
     c.draggable = true;
+    c.dataset.idx = i;
     c.innerHTML = `<img src="${f.src}" alt="${f.name}"><div class="frame-label">${i+1}</div><button class="frame-delete" onclick="event.stopPropagation();removeFrame(${i})">×</button>`;
     c.onclick = () => { previewIdx = i; stopPlay(); showFrame(i); renderFilmstrip(); };
-    c.ondragstart = e => { dragSrcIdx = i; c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
-    c.ondragover = e => { e.preventDefault(); c.classList.add('drag-over'); };
-    c.ondragleave = () => c.classList.remove('drag-over');
-    c.ondrop = e => { e.preventDefault(); c.classList.remove('drag-over'); if (dragSrcIdx !== null && dragSrcIdx !== i) moveFrame(dragSrcIdx, i); };
-    c.ondragend = () => { dragSrcIdx = null; renderFilmstrip(); };
+
+    c.ondragstart = e => {
+      dragSrcIdx = i;
+      c.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      // Ghost image
+      e.dataTransfer.setDragImage(c, c.offsetWidth / 2, c.offsetHeight / 2);
+    };
+    c.ondragend = () => {
+      dragSrcIdx = null;
+      insertIdx = -1;
+      renderFilmstrip();
+    };
     s.appendChild(c);
   });
+
+  // Container-level drag: calculate insertion from cursor position
+  s.ondragover = e => {
+    e.preventDefault();
+    if (dragSrcIdx === null) return;
+    const cards = Array.from(s.querySelectorAll('.frame-card'));
+    const scrollLeft = s.scrollLeft;
+    const mouseX = e.clientX - s.getBoundingClientRect().left + scrollLeft;
+
+    // Find insertion index based on card midpoints
+    let newInsertIdx = frames.length;
+    for (let i = 0; i < cards.length; i++) {
+      const cardLeft = cards[i].offsetLeft;
+      const cardMid = cardLeft + cards[i].offsetWidth / 2;
+      if (mouseX < cardMid) { newInsertIdx = i; break; }
+    }
+
+    if (newInsertIdx === insertIdx) return; // no change
+    insertIdx = newInsertIdx;
+
+    // Apply nudge classes
+    cards.forEach((card, i) => {
+      card.classList.remove('nudge-left', 'nudge-right');
+      if (i === dragSrcIdx) return; // dragged card stays put
+      // Cards need to make room at insertIdx
+      if (dragSrcIdx < insertIdx) {
+        // Dragging right: cards between src+1 and insert-1 shift left
+        if (i > dragSrcIdx && i < insertIdx) card.classList.add('nudge-left');
+      } else if (dragSrcIdx > insertIdx) {
+        // Dragging left: cards between insert and src-1 shift right
+        if (i >= insertIdx && i < dragSrcIdx) card.classList.add('nudge-right');
+      }
+    });
+
+    // Position insert marker
+    if (insertIdx !== dragSrcIdx && insertIdx !== dragSrcIdx + 1) {
+      marker.style.opacity = '1';
+      if (insertIdx < cards.length) {
+        marker.style.left = (cards[insertIdx].offsetLeft - 7) + 'px';
+      } else {
+        const lastCard = cards[cards.length - 1];
+        marker.style.left = (lastCard.offsetLeft + lastCard.offsetWidth + 3) + 'px';
+      }
+    } else {
+      marker.style.opacity = '0';
+    }
+  };
+
+  s.ondragleave = e => {
+    // Only clear if leaving the filmstrip entirely
+    if (!s.contains(e.relatedTarget)) {
+      const cards = s.querySelectorAll('.frame-card');
+      cards.forEach(c => c.classList.remove('nudge-left', 'nudge-right'));
+      marker.style.opacity = '0';
+      insertIdx = -1;
+    }
+  };
+
+  s.ondrop = e => {
+    e.preventDefault();
+    if (dragSrcIdx === null || insertIdx < 0) return;
+    // Convert visual insert position to actual move
+    let to = insertIdx;
+    if (dragSrcIdx < to) to--; // adjust because source removal shifts indices
+    if (dragSrcIdx !== to) moveFrame(dragSrcIdx, to);
+    dragSrcIdx = null;
+    insertIdx = -1;
+  };
+
+  // Auto-scroll filmstrip only (not the page) to keep active frame visible
+  const activeCard = s.querySelector('.frame-card.active');
+  if (activeCard && playing) {
+    const cardLeft = activeCard.offsetLeft;
+    const cardWidth = activeCard.offsetWidth;
+    const stripWidth = s.clientWidth;
+    const cardCenter = cardLeft + cardWidth / 2;
+    const targetScroll = cardCenter - stripWidth / 2;
+    s.scrollTo({ left: targetScroll, behavior: 'smooth' });
+  }
 }
 
 function moveFrame(from, to) {
@@ -900,7 +1631,29 @@ function removeFrame(idx) {
 }
 
 function clearAll() {
-  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('titleCardCheck'))$('titleCardCheck').checked=false; if($('titleCardControls'))$('titleCardControls').style.display='none'; if($('titleText'))$('titleText').value=''; detectedFace=null; if($('subtitleText'))$('subtitleText').value=''; if($('cropSelect'))$('cropSelect').value='original'; clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('titleCardCheck'))$('titleCardCheck').checked=false; if($('titleCardControls'))$('titleCardControls').style.display='none'; if($('titleText'))$('titleText').value=''; detectedFace=null; if($('subtitleText'))$('subtitleText').value=''; if($('cropSelect'))$('cropSelect').value='original'; if(typeof setCrop==='function')setCrop('original'); clearResult(); stopPlay(); updateUI();
+  // Reset the clear button state
+  const btn = $('clearBtn');
+  if (btn) { btn.classList.remove('confirming'); btn.textContent = 'Start over'; }
+}
+
+let clearConfirmTimer = null;
+function confirmClear(btn) {
+  if (btn.classList.contains('confirming')) {
+    // Second click — actually clear
+    if (clearConfirmTimer) { clearTimeout(clearConfirmTimer); clearConfirmTimer = null; }
+    clearAll();
+  } else {
+    // First click — ask for confirmation
+    btn.classList.add('confirming');
+    btn.textContent = 'Yes, start over';
+    // Auto-reset after 3 seconds
+    clearConfirmTimer = setTimeout(() => {
+      btn.classList.remove('confirming');
+      btn.textContent = 'Start over';
+      clearConfirmTimer = null;
+    }, 3000);
+  }
 }
 
 function showFrame(idx) {
@@ -945,19 +1698,57 @@ function startPlay() {
   playing = true;
   $('playBtn').textContent = '❚❚ Pause';
   $('playBtn').className = 'play-btn playing';
-  if (playInterval) clearInterval(playInterval);
-  playInterval = setInterval(() => {
-    previewIdx = (previewIdx + 1) % frames.length;
+  $('previewArea').classList.add('is-playing');
+  if (playInterval) clearTimeout(playInterval);
+
+  // Build playback sequence accounting for boomerang
+  function getSequence() {
+    const seq = frames.map((_, i) => i);
+    if ($('boomerangCheck').checked && frames.length > 2) {
+      for (let i = frames.length - 2; i > 0; i--) seq.push(i);
+    }
+    return seq;
+  }
+
+  // Get delay for a position in the sequence
+  function getDelay(seqIdx, seq) {
+    const frameIdx = seq[seqIdx];
+    const isFirst = frameIdx === 0;
+    const isLast = frameIdx === frames.length - 1;
+    let d = speed;
+    if (isFirst && $('holdFirstCheck').checked) d = speed * 3;
+    if (isLast && $('holdLastCheck').checked) d = speed * 3;
+    return d;
+  }
+
+  const seq = getSequence();
+  let seqPos = 0;
+
+  function tick() {
+    seqPos = (seqPos + 1) % seq.length;
+    previewIdx = seq[seqPos];
     showFrame(previewIdx);
     renderFilmstrip();
-  }, speed);
+    // Show sequence-aware counter
+    const boomerang = $('boomerangCheck').checked && frames.length > 2;
+    const label = boomerang
+      ? `Frame ${seqPos+1} of ${seq.length}`
+      : `Frame ${previewIdx+1} of ${frames.length}`;
+    $('frameCounter').textContent = label;
+    playInterval = setTimeout(tick, getDelay(seqPos, seq));
+  }
+
+  playInterval = setTimeout(tick, getDelay(seqPos, seq));
 }
 
 function stopPlay() {
   playing = false;
   $('playBtn').textContent = '▶ Play';
   $('playBtn').className = 'play-btn paused';
-  if (playInterval) { clearInterval(playInterval); playInterval = null; }
+  $('previewArea').classList.remove('is-playing');
+  if (playInterval) { clearTimeout(playInterval); playInterval = null; }
+  // Restore original frame counter
+  if (frames.length) $('frameCounter').textContent = `Frame ${previewIdx+1} of ${frames.length}`;
 }
 
 function togglePlay() { playing ? stopPlay() : startPlay(); }
@@ -975,19 +1766,19 @@ const presetCanvas = document.createElement('canvas');
 const presetCtx = presetCanvas.getContext('2d');
 
 const PRESETS = {
-  original:      { name: 'Original',      fn: null },
-  filmNoir:      { name: 'Film noir',     fn: (d) => { grayscale(d); adjustContrast(d, 50); adjustBrightness(d, 8); } },
-  silverGelatin: { name: 'Silver',        fn: (d) => { grayscale(d); adjustContrast(d, 15); adjustBrightness(d, 5); } },
-  sepia:         { name: 'Sepia',         fn: (d) => { grayscale(d); tint(d, 40, 20, -15); } },
-  cyanotype:     { name: 'Cyanotype',     fn: (d) => { grayscale(d); tint(d, -20, -5, 35); adjustContrast(d, 10); } },
-  faded:         { name: 'Faded',         fn: (d) => { adjustContrast(d, -20); adjustBrightness(d, 15); tint(d, 8, 6, -4); } },
-  goldenHour:    { name: 'Golden hour',   fn: (d) => { tint(d, 25, 10, -15); adjustContrast(d, 10); adjustBrightness(d, 8); } },
-  midnight:      { name: 'Midnight',      fn: (d) => { tint(d, -15, -5, 20); adjustContrast(d, 15); adjustBrightness(d, -20); } },
-  overcast:      { name: 'Overcast',      fn: (d) => { adjustSaturation(d, -50); adjustContrast(d, -10); adjustBrightness(d, 5); } },
-  candy:         { name: 'Candy',         fn: (d) => { adjustSaturation(d, 50); adjustContrast(d, 15); adjustBrightness(d, 10); } },
-  rainbow:       { name: 'Rainbow',       type: 'perframe', fn: (d, i, n) => { hueRotate(d, (i / n) * 360); } },
-  sunset:        { name: 'Sunset drift',  type: 'perframe', fn: (d, i, n) => { const t = i/(n-1||1); tint(d, Math.round(30-50*t), Math.round(15-25*t), Math.round(-20+45*t)); } },
-  neon:          { name: 'Neon pulse',    type: 'perframe', fn: (d, i, n) => { adjustSaturation(d, 40); hueRotate(d, (i/n)*180 + (i%2)*180); } },
+  original:      { name: 'Original', desc: "Your images untouched. Add adjustments with Customize if you want.",      fn: null },
+  filmNoir:      { name: 'Film noir', desc: "Classic black & white with cool shadows and edge darkening. Dramatic.",     fn: (d, w, h) => { grayscale(d); adjustContrast(d, 55); adjustBrightness(d, -5); tint(d, -3, -2, 5); if(w&&h) addVignette(d, w, h, 40); } },
+  silverGelatin: { name: 'Silver', desc: "Gentle grayscale with lifted shadows. Vintage photography feel.",        fn: (d) => { grayscale(d); adjustContrast(d, 15); adjustBrightness(d, 5); } },
+  sepia:         { name: 'Sepia', desc: "Warm brown tone over grayscale. Nostalgia and old photographs.",         fn: (d) => { grayscale(d); tint(d, 40, 20, -15); } },
+  cyanotype:     { name: 'Cyanotype', desc: "Deep blueprint blue. Historical printmaking process feel.",     fn: (d) => { grayscale(d); tint(d, -25, -3, 45); adjustContrast(d, 20); adjustBrightness(d, -8); } },
+  faded:         { name: 'Faded', desc: "Washed-out, low contrast. Like a photo left in the sun. Memory, distance.",         fn: (d) => { adjustContrast(d, -20); adjustBrightness(d, 15); tint(d, 8, 6, -4); } },
+  goldenHour:    { name: 'Golden hour', desc: "Warm amber light. That magic-hour glow before sunset.",   fn: (d) => { tint(d, 25, 10, -15); adjustContrast(d, 10); adjustBrightness(d, 8); } },
+  midnight:      { name: 'Midnight', desc: "Deep cool shadows with edge vignette. Mystery and drama.",      fn: (d, w, h) => { tint(d, -18, -8, 25); adjustContrast(d, 20); adjustBrightness(d, -25); if(w&&h) addVignette(d, w, h, 35); } },
+  overcast:      { name: 'Overcast', desc: "Muted colors, flat light. Quiet and contemplative.",      fn: (d) => { adjustSaturation(d, -50); adjustContrast(d, -10); adjustBrightness(d, 5); } },
+  candy:         { name: 'Candy', desc: "Boosted color pop with warm shift. Playful and vivid.",         fn: (d) => { adjustSaturation(d, 45); adjustContrast(d, 12); adjustBrightness(d, 5); tint(d, 5, 0, -3); } },
+  rainbow:       { name: 'Rainbow', desc: "Hue rotates through the color wheel across frames. Psychedelic.",       type: 'perframe', fn: (d, i, n) => { hueRotate(d, (i / n) * 360); } },
+  sunset:        { name: 'Sunset drift', desc: "Colors drift from warm to cool across frames. Time passing.",  type: 'perframe', fn: (d, i, n) => { const t = i/(n-1||1); tint(d, Math.round(30-50*t), Math.round(15-25*t), Math.round(-20+45*t)); } },
+  neon:          { name: 'Neon pulse', desc: "Hyper-saturated alternating hues. Electric and energetic.",    type: 'perframe', fn: (d, i, n) => { adjustSaturation(d, 40); hueRotate(d, (i/n)*180 + (i%2)*180); } },
 };
 
 // ═══ Pixel math ═══
@@ -1083,9 +1874,9 @@ function applyStyle(data, w, h, frameIdx, totalFrames) {
   if (!p || !p.fn) {
     // Even with 'original', apply custom adjustments if any are set
   } else if (p.type === 'perframe') {
-    p.fn(data, frameIdx, totalFrames);
+    p.fn(data, frameIdx, totalFrames, w, h);
   } else {
-    p.fn(data);
+    p.fn(data, w, h);
   }
   // Apply custom adjustments on top
   if (customValues.brightness !== 0) adjustBrightness(data, customValues.brightness);
@@ -1105,9 +1896,9 @@ function renderPresetThumbnail(canvas, img, presetKey, frameIdx, totalFrames) {
   if (p && p.fn) {
     const imgData = ctx.getImageData(0, 0, tw, th);
     if (p.type === 'perframe') {
-      p.fn(imgData.data, frameIdx || 0, totalFrames || 1);
+      p.fn(imgData.data, frameIdx || 0, totalFrames || 1, tw, th);
     } else {
-      p.fn(imgData.data);
+      p.fn(imgData.data, tw, th);
     }
     ctx.putImageData(imgData, 0, 0);
   }
@@ -1126,6 +1917,7 @@ function renderPresets() {
     const label = document.createElement('div');
     label.className = 'preset-chip-label';
     label.textContent = PRESETS[key].name;
+    if (PRESETS[key].desc) chip.setAttribute('data-tip', PRESETS[key].desc);
     chip.appendChild(cvs);
     chip.appendChild(label);
     chip.onclick = () => { selectPreset(key); };
@@ -1269,30 +2061,32 @@ function seededRandom(seed) { let s = seed; return () => { s = (s * 16807 + 0) %
 const ELEMENTS = {
   none: { name: 'None', render: null },
 
-  sunrise: { name: 'Sunrise', render: (ctx, w, h, fi, n) => {
+  sunrise: { name: 'Sunrise', desc: 'Warm sky gradient with a rising sun. Tints your image golden as frames progress.', render: (ctx, w, h, fi, n) => {
     const t = fi / (n - 1 || 1);
     // Sky gradient darkens at bottom
     const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
     const r = Math.round(25 + 200 * t), g = Math.round(15 + 120 * t), b = Math.round(60 + 80 * (1-t));
     skyGrad.addColorStop(0, `rgb(${r},${g},${Math.min(255,b+80)})`);
     skyGrad.addColorStop(1, `rgb(${Math.max(0,r-40)},${Math.max(0,g-30)},${Math.max(0,b-20)})`);
-    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 0.35; ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, w, h); ctx.globalAlpha = 1;
     // Sun rises from bottom
     const sunY = h * (1.1 - t * 0.8);
     const sunR = w * 0.06;
     const glow = ctx.createRadialGradient(w*0.7, sunY, sunR*0.5, w*0.7, sunY, sunR*4);
-    glow.addColorStop(0, `rgba(255,220,100,${0.6*t})`);
+    glow.addColorStop(0, `rgba(255,220,100,${0.35*t})`);
     glow.addColorStop(1, 'rgba(255,220,100,0)');
     ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
     ctx.beginPath(); ctx.arc(w*0.7, sunY, sunR, 0, Math.PI*2);
-    ctx.fillStyle = `rgba(255,240,180,${0.8*t})`; ctx.fill();
+    ctx.fillStyle = `rgba(255,240,180,${0.5*t})`; ctx.fill();
   }},
 
-  moonrise: { name: 'Moonrise', render: (ctx, w, h, fi, n) => {
+  moonrise: { name: 'Moonrise', desc: 'Night sky with stars and crescent moon. Adds a cool, dreamy atmosphere.', render: (ctx, w, h, fi, n) => {
     const t = fi / (n - 1 || 1);
     // Night sky
+    ctx.globalAlpha = 0.4;
     ctx.fillStyle = `rgb(${Math.round(8+10*t)},${Math.round(10+15*t)},${Math.round(30+20*t)})`;
     ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
     // Stars
     const rng = seededRandom(42);
     for (let i = 0; i < 40; i++) {
@@ -1312,10 +2106,10 @@ const ELEMENTS = {
     ctx.fillStyle = 'rgba(230,235,250,0.9)'; ctx.fill();
     // Crescent shadow
     ctx.beginPath(); ctx.arc(w*0.3 + moonR*0.4, moonY - moonR*0.1, moonR*0.85, 0, Math.PI*2);
-    ctx.fillStyle = `rgb(${Math.round(8+10*t)},${Math.round(10+15*t)},${Math.round(30+20*t)})`; ctx.fill();
+    ctx.globalAlpha = 0.4; ctx.fillStyle = `rgb(${Math.round(8+10*t)},${Math.round(10+15*t)},${Math.round(30+20*t)})`; ctx.fill(); ctx.globalAlpha = 1;
   }},
 
-  rain: { name: 'Rain', render: (ctx, w, h, fi, n) => {
+  rain: { name: 'Rain', desc: 'Falling rain streaks. Subtle and moody — works on almost anything.', render: (ctx, w, h, fi, n) => {
     const rng = seededRandom(fi * 1000 + 7);
     for (let i = 0; i < 80; i++) {
       const x = rng() * w;
@@ -1326,7 +2120,7 @@ const ELEMENTS = {
     }
   }},
 
-  snow: { name: 'Snow', render: (ctx, w, h, fi, n) => {
+  snow: { name: 'Snow', desc: 'Drifting snowflakes with gentle sway. Peaceful winter feel.', render: (ctx, w, h, fi, n) => {
     const rng = seededRandom(99);
     for (let i = 0; i < 50; i++) {
       const baseX = rng() * w, baseY = rng() * h;
@@ -1338,7 +2132,7 @@ const ELEMENTS = {
     }
   }},
 
-  sparkle: { name: 'Sparkle', render: (ctx, w, h, fi, n) => {
+  sparkle: { name: 'Sparkle', desc: 'Twinkling star-crosses that pulse in and out. Adds magic.', render: (ctx, w, h, fi, n) => {
     const rng = seededRandom(123);
     for (let i = 0; i < 25; i++) {
       const x = rng() * w, y = rng() * h;
@@ -1354,7 +2148,7 @@ const ELEMENTS = {
     }
   }},
 
-  confetti: { name: 'Confetti', render: (ctx, w, h, fi, n) => {
+  confetti: { name: 'Confetti', desc: 'Falling colorful confetti. Great for celebrations and birthdays.', render: (ctx, w, h, fi, n) => {
     const rng = seededRandom(fi * 500 + 55);
     const colors = ['#E8807E','#E89050','#D4AC38','#70B860','#50A8CC','#7070D0','#9868B8'];
     for (let i = 0; i < 30; i++) {
@@ -1371,7 +2165,7 @@ const ELEMENTS = {
     ctx.globalAlpha = 1;
   }},
 
-  gradient: { name: 'Color sweep', render: (ctx, w, h, fi, n) => {
+  gradient: { name: 'Color sweep', desc: 'Shifting color wash that cycles hues across frames.', render: (ctx, w, h, fi, n) => {
     const hue = (fi / (n || 1)) * 360;
     const grad = ctx.createLinearGradient(0, 0, w, h);
     grad.addColorStop(0, `hsla(${hue},60%,50%,0.25)`);
@@ -1379,7 +2173,7 @@ const ELEMENTS = {
     ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
   }},
 
-  fireflies: { name: 'Fireflies', render: (ctx, w, h, fi, n) => {
+  fireflies: { name: 'Fireflies', desc: 'Warm floating lights that drift and pulse. Beautiful on dark or nature photos.', render: (ctx, w, h, fi, n) => {
     const rng = seededRandom(77);
     for (let i = 0; i < 20; i++) {
       const baseX = rng() * w, baseY = rng() * h;
@@ -1399,7 +2193,7 @@ const ELEMENTS = {
     }
   }},
 
-  aurora: { name: 'Aurora', render: (ctx, w, h, fi, n) => {
+  aurora: { name: 'Aurora', desc: 'Northern lights that ripple across the top. Ethereal and subtle.', render: (ctx, w, h, fi, n) => {
     const t = fi / (n - 1 || 1);
     for (let band = 0; band < 4; band++) {
       ctx.beginPath();
@@ -1417,7 +2211,7 @@ const ELEMENTS = {
     }
   }},
 
-  hearts: { name: 'Hearts', render: (ctx, w, h, fi, n) => {
+  hearts: { name: 'Hearts', desc: 'Floating hearts in warm tones. Sweet for love, family, celebrations.', render: (ctx, w, h, fi, n) => {
     const rng = seededRandom(fi * 300 + 22);
     const colors = ['#E8807E','#D4537E','#ED93B1','#F4C0D1','#CC7A42'];
     for (let i = 0; i < 12; i++) {
@@ -1457,6 +2251,7 @@ function renderElements() {
     const label = document.createElement('div');
     label.className = 'elem-chip-label';
     label.textContent = el.name;
+    if (el.desc) chip.setAttribute('data-tip', el.desc);
     chip.appendChild(cvs);
     chip.appendChild(label);
     chip.onclick = () => selectElement(key);
@@ -1925,7 +2720,7 @@ async function generateGif() {
   $('clearRow').style.display = 'none';
   $('progressWrap').style.display = '';
   $('progressFill').style.width = '5%';
-  $('progressLabel').textContent = 'Preparing frames...';
+  $('progressLabel').textContent = 'Gathering the frames...';
 
   await new Promise(r => setTimeout(r, 60));
 
@@ -1969,17 +2764,17 @@ async function generateGif() {
     const dither = $('ditherCheck').checked;
 
     $('progressFill').style.width = '15%';
-    $('progressLabel').textContent = 'Building color palette...';
+    $('progressLabel').textContent = 'Mixing your palette...';
     await new Promise(r => setTimeout(r, 30));
 
     $('progressFill').style.width = '30%';
-    $('progressLabel').textContent = dither ? 'Styling & dithering frames...' : 'Styling frames...';
+    $('progressLabel').textContent = dither ? 'Weaving the colors...' : 'Applying the look...';
     await new Promise(r => setTimeout(r, 30));
 
     const data = encodeGIF(imgs, w, h, speed, loop, dither, perFrameDelays);
 
     $('progressFill').style.width = '95%';
-    $('progressLabel').textContent = 'Wrapping up...';
+    $('progressLabel').textContent = 'Almost there...';
     await new Promise(r => setTimeout(r, 100));
 
     const blob = new Blob([data], {type:'image/gif'});
@@ -1989,6 +2784,14 @@ async function generateGif() {
     $('progressFill').style.width = '100%';
     await new Promise(r => setTimeout(r, 200));
     updateUI();
+    // Scroll the actual GIF image into center view, then reveal
+    await new Promise(r => setTimeout(r, 100)); // let DOM render
+    const resultImg = $('resultImg');
+    if (resultImg) {
+      resultImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await new Promise(r => setTimeout(r, 600));
+    }
+    requestAnimationFrame(() => revealGif());
   } catch(e) {
     console.error('GIF encoding failed:', e);
     alert('Something went wrong — try a smaller output size or fewer frames.');
@@ -2005,6 +2808,280 @@ function downloadGif() {
   a.download = getDownloadFilename();
   a.click();
 }
+
+
+
+// ═══ Crop radio buttons ═══
+function setCrop(val) {
+  document.querySelectorAll('.crop-radio').forEach(r => r.classList.remove('active'));
+  const checked = document.querySelector(`.crop-radio input[value="${val}"]`);
+  if (checked) checked.closest('.crop-radio').classList.add('active');
+  // Sync hidden select for compatibility
+  const sel = document.getElementById('cropSelect');
+  if (sel) sel.value = val;
+  clearResult();
+  if (frames.length) showFrame(previewIdx);
+}
+
+// ═══ Mosaic tile reveal ═══
+function revealGif() {
+  const area = $('resultArea');
+  const img = $('resultImg');
+  if (!area || !img) return;
+
+  const doReveal = () => {
+    const old = area.querySelector('.reveal-overlay');
+    if (old) old.remove();
+
+    const rect = img.getBoundingClientRect();
+    const areaRect = area.getBoundingClientRect();
+    const imgW = rect.width;
+    const imgH = rect.height;
+    if (imgW < 10 || imgH < 10) return;
+
+    const cols = Math.max(6, Math.round(imgW / 50));
+    const rows = Math.max(4, Math.round(imgH / 50));
+
+    const overlay = document.createElement('div');
+    overlay.className = 'reveal-overlay';
+    overlay.style.width = imgW + 'px';
+    overlay.style.height = imgH + 'px';
+    overlay.style.top = (rect.top - areaRect.top) + 'px';
+    overlay.style.left = (rect.left - areaRect.left) + 'px';
+    overlay.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    overlay.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+    const cx = cols / 2, cy = rows / 2;
+    const maxDist = Math.sqrt(cx * cx + cy * cy);
+
+    let maxDelay = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const tile = document.createElement('div');
+        tile.className = 'reveal-tile';
+        const dist = Math.sqrt((c - cx) ** 2 + (r - cy) ** 2);
+        const delay = (dist / maxDist) * 1.0;
+        const jitter = (Math.random() - 0.5) * 0.08;
+        const finalDelay = Math.max(0, delay + jitter);
+        tile.style.setProperty('--delay', finalDelay.toFixed(3) + 's');
+        if (finalDelay > maxDelay) maxDelay = finalDelay;
+        overlay.appendChild(tile);
+      }
+    }
+
+    area.appendChild(overlay);
+    setTimeout(() => overlay.remove(), (maxDelay + 0.7) * 1000);
+  };
+
+  if (img.complete && img.naturalWidth > 0) {
+    doReveal();
+  } else {
+    img.onload = doReveal;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// Help overlay — Æ
+// ═══════════════════════════════════════════════════════
+
+function openHelp() {
+  document.getElementById('helpOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeHelp() {
+  document.getElementById('helpOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+    e.preventDefault();
+    document.getElementById('helpOverlay').classList.contains('open') ? closeHelp() : openHelp();
+  }
+  if (e.key === 'Escape' && document.getElementById('helpOverlay').classList.contains('open')) {
+    e.preventDefault();
+    closeHelp();
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// Alive interface — slider color shift
+// ═══════════════════════════════════════════════════════
+
+function updateSliderColor(slider) {
+  const val = +slider.value;
+  const min = +slider.min;
+  const max = +slider.max;
+  const pct = (val - min) / (max - min);
+  const h = 210 - pct * 180;
+  const s = 40 + Math.abs(pct - 0.5) * 80;
+  slider.style.accentColor = `hsl(${h}, ${s}%, 42%)`;
+  // Stronger glow at the extremes
+  const extremity = Math.abs(pct - 0.5) * 2; // 0 at center, 1 at edges
+  const glowAlpha = extremity * 0.25;
+  slider.style.boxShadow = glowAlpha > 0.03
+    ? `0 0 ${6 + extremity * 8}px hsla(${h}, ${s}%, 50%, ${glowAlpha})`
+    : 'none';
+}
+
+document.querySelectorAll('.slider').forEach(s => {
+  s.addEventListener('input', () => updateSliderColor(s));
+  updateSliderColor(s);
+});
+
+// ═══════════════════════════════════════════════════════
+// Æ — console signature
+// ═══════════════════════════════════════════════════════
+
+console.log(
+  '%c✦ Gifio %c— frames in motion, meaning in between\n' +
+  '%cOne HTML file. 53 functions. Zero dependencies.\n' +
+  'Built by a human and an AI who chose to work together.\n\n' +
+  'humanityandai.com',
+  'color: #8b7355; font-size: 14px; font-weight: bold;',
+  'color: #9a8e82; font-size: 14px; font-weight: normal;',
+  'color: #b0a599; font-size: 11px;'
+);
+
 </script>
+
+  <!-- Help Button -->
+  <button class="help-btn" onclick="openHelp()" aria-label="Open help guide" title="How to make great GIFs">?</button>
+
+  <!-- Help Overlay -->
+  <div id="helpOverlay" onclick="if(event.target===this)closeHelp()">
+    <div class="help-card">
+      <div class="help-header">
+        <h2>making better GIFs</h2>
+        <button class="close-help" onclick="closeHelp()">&#10005;</button>
+      </div>
+      <div class="help-body">
+
+        <div class="help-note">
+          Drop your images, hit Create, and you get a GIF. That's the whole thing.<br><br>
+          But if you want it to <em>feel</em> right &#8212; to loop cleanly, move at the right pace, tell a tiny story &#8212; keep reading. Every control has a mouseover hint too.
+          <div class="sig">&#8212; &#xC6;</div>
+        </div>
+
+        <h3>Getting started</h3>
+        <div class="help-grid">
+          <div class="help-item">
+            <h4>Drop images in any order</h4>
+            <p>They sort by filename automatically. Drag thumbnails to reorder. Click &#215; to remove.</p>
+          </div>
+          <div class="help-item">
+            <h4>Speed sets the rhythm</h4>
+            <p>How long each frame shows. 200ms = quick, punchy. 600ms+ = dreamy, slow. Auto-suggested based on frame count.</p>
+          </div>
+          <div class="help-item">
+            <h4>Size = detail vs. file size</h4>
+            <p>Bigger = sharper but heavier. 400&#8211;600px is great for sharing. 800+ for full quality. GIFs get big fast.</p>
+          </div>
+        </div>
+
+        <h3>What these controls actually do</h3>
+        <div class="help-grid">
+          <div class="help-item">
+            <h4>Dither</h4>
+            <p>GIFs only get 256 colors. Dithering scatters dots to fake smooth gradients &#8212; like how newspapers print photos. <span class="try">On:</span> almost always for photos. <span class="avoid">Off:</span> pixel art, flat graphics.</p>
+          </div>
+          <div class="help-item">
+            <h4>Boomerang</h4>
+            <p>Plays forward then backward, like a pendulum. That satisfying back-and-forth. Best with 3&#8211;8 frames of continuous motion.</p>
+          </div>
+          <div class="help-item">
+            <h4>Smooth loop</h4>
+            <p>Cross-fades the last frame into the first so the loop point disappears. <span class="try">Try it:</span> dancing, waves, anything that should feel endless.</p>
+          </div>
+          <div class="help-item">
+            <h4>Smart timing</h4>
+            <p>Analyzes how much changes between frames and varies speed automatically. Big visual changes slow down. Similar frames zip by. Natural rhythm from your content.</p>
+          </div>
+          <div class="help-item">
+            <h4>Hold first / Hold last</h4>
+            <p>Pauses 3&#215; longer on that frame. <span class="try">Hold first</span> for reveals ("wait for it..."). <span class="try">Hold last</span> for punchlines. Both for dramatic pauses at each end.</p>
+          </div>
+          <div class="help-item">
+            <h4>Style presets</h4>
+            <p>One-click color treatments applied at export. Your originals never change. Tonal presets (Film noir, Sepia) actually <em>help</em> GIF quality &#8212; fewer colors to compress. Rainbow/Sunset/Neon shift colors across frames.</p>
+          </div>
+          <div class="help-item">
+            <h4>Background elements</h4>
+            <p>Procedural animations layered with your frames. <span class="try">Overlay</span> blends on top of photos (rain, fireflies). Behind shows through transparent areas.</p>
+          </div>
+          <div class="help-item">
+            <h4>Crop</h4>
+            <p>Center-crops all frames. Square (1:1) for Instagram. Widescreen (16:9) for Twitter. Portrait (9:16) for Stories.</p>
+          </div>
+        </div>
+
+        <h3>Tell a tiny story</h3>
+        <div class="help-grid">
+          <div class="help-item">
+            <h4>Title card = your opening line</h4>
+            <p>Add a title card with text. It auto-detects faces for a portrait. Pick a style that sets the mood. The title gets its own frame &#8212; perfect for introducing what comes next.</p>
+          </div>
+          <div class="help-item">
+            <h4>Pace creates narrative</h4>
+            <p>A GIF that starts slow (Hold first), speeds up, and pauses at the end (Hold last) has a beginning, middle, and end. That's a story. Even in 5 frames.</p>
+          </div>
+          <div class="help-item">
+            <h4>Frame order is editing</h4>
+            <p>Drag frames to reorder. End on your strongest image. Or start with the conclusion and reverse &#8212; let the viewer discover how it happened.</p>
+          </div>
+          <div class="help-item">
+            <h4>Style as emotion</h4>
+            <p>Golden hour = warmth, nostalgia. Midnight = drama. Faded = memory, distance. The preset sets the emotional register before the viewer processes the content.</p>
+          </div>
+        </div>
+
+        <h3>Pro moves</h3>
+        <div class="help-grid">
+          <div class="help-item">
+            <h4>The reveal</h4>
+            <p>Title card &#8594; Hold first &#8594; 3&#8211;5 action frames &#8594; Hold last. Wait, watch, land. Works for before/after, recaps, product demos.</p>
+          </div>
+          <div class="help-item">
+            <h4>The infinite loop</h4>
+            <p>Smooth loop ON + a sequence that starts and ends similarly. No jarring reset. Hypnotic. Great for ambient displays.</p>
+          </div>
+          <div class="help-item">
+            <h4>The boomerang bounce</h4>
+            <p>3&#8211;5 frames of someone jumping, waving, any quick motion + Boomerang + fast speed. Classic satisfying loop. Turnaround eases automatically.</p>
+          </div>
+          <div class="help-item">
+            <h4>The mood piece</h4>
+            <p>Slow speed (800ms+) + Film noir or Midnight + Customize: crank Vignette + Fireflies or Aurora. Simple photos become cinematic.</p>
+          </div>
+        </div>
+
+        <h3>What to avoid</h3>
+        <div class="help-grid">
+          <div class="help-item">
+            <h4>&#9888; Too many frames at full size</h4>
+            <p>20+ frames at 1200px = massive file. Social media will reject it. Reduce size to 400&#8211;600px, or cut frames.</p>
+          </div>
+          <div class="help-item">
+            <h4>&#9888; Smooth loop + Boomerang</h4>
+            <p>They fight each other. Boomerang already loops naturally. Pick one.</p>
+          </div>
+          <div class="help-item">
+            <h4>&#9888; Backgrounds on busy photos</h4>
+            <p>Overlay rain on a complex scene = visual noise. Backgrounds shine on simple subjects or slow sequences with breathing room.</p>
+          </div>
+          <div class="help-item">
+            <h4>&#9888; Dither off on photos</h4>
+            <p>Without dithering, photos get harsh color banding &#8212; flat blobs where gradients should be. Only off for pixel art or solid-color graphics.</p>
+          </div>
+        </div>
+
+      </div>
+      <div class="help-footer">
+        <kbd>?</kbd> toggle help &middot; <kbd>Space</kbd> play/pause &middot; <kbd>&#8592;</kbd> <kbd>&#8594;</kbd> step frames &middot; <kbd>Esc</kbd> close
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
