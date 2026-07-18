@@ -1293,25 +1293,26 @@ function loadImages(fileList) {
   imgs.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
   let loaded = 0;
   const batch = [];
+  // Blob URLs, not readAsDataURL: no base64 encode of the whole file, no
+  // giant strings held in memory, the browser streams straight from disk.
+  // Decode cost is the only inherent cost; this removes the rest.
+  function done() {
+    if (++loaded !== imgs.length) return;
+    batch.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+    frames = frames.concat(batch);
+    previewIdx = 0;
+    clearResult();
+    smartDefaults();
+    updateUI();
+    startPlay();
+  }
   imgs.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        batch.push({img, name: file.name, src: e.target.result});
-        if (++loaded === imgs.length) {
-          batch.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
-          frames = frames.concat(batch);
-          previewIdx = 0;
-          clearResult();
-          smartDefaults();
-          updateUI();
-          startPlay();
-        }
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { batch.push({img, name: file.name, src: url}); done(); };
+    // A corrupt file used to hang the load gate forever; now it's skipped.
+    img.onerror = () => { URL.revokeObjectURL(url); done(); };
+    img.src = url;
   });
 }
 
@@ -1642,13 +1643,15 @@ function moveFrame(from, to) {
 }
 
 function removeFrame(idx) {
-  frames.splice(idx, 1);
+  const [gone] = frames.splice(idx, 1);
+  if (gone && gone.src && gone.src.startsWith('blob:')) URL.revokeObjectURL(gone.src);
   previewIdx = Math.min(previewIdx, Math.max(0, frames.length - 1));
   clearResult(); updateUI();
   if (frames.length < 2) stopPlay();
 }
 
 function clearAll() {
+  frames.forEach(f => { if (f.src && f.src.startsWith('blob:')) URL.revokeObjectURL(f.src); });
   frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('titleCardCheck'))$('titleCardCheck').checked=false; if($('titleCardControls'))$('titleCardControls').style.display='none'; if($('titleText'))$('titleText').value=''; detectedFace=null; if($('subtitleText'))$('subtitleText').value=''; if($('cropSelect'))$('cropSelect').value='original'; if(typeof setCrop==='function')setCrop('original'); clearResult(); stopPlay(); updateUI();
   // Reset the clear button state
   const btn = $('clearBtn');
