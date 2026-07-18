@@ -1226,6 +1226,15 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
 
 let frames = [];
 let speed = 400, outputWidth = 800, previewIdx = 0;
+// Styled-preview cache: frame N under style S is identical every loop, so
+// render it once. Key covers everything that changes pixels; framesVersion
+// bumps on same-length reorders (reverse/move) the key can't see.
+let framesVersion = 0;
+let previewCache = { key: '', urls: [] };
+function previewStyleKey() {
+  const crop = $('cropSelect') ? $('cropSelect').value : 'original';
+  return [activePreset, activeElement, JSON.stringify(customValues), crop, frames.length, framesVersion].join('|');
+}
 let playing = false, playInterval = null;
 let gifBlobUrl = null, gifBlobSize = 0;
 let dragSrcIdx = null;
@@ -1308,6 +1317,7 @@ function loadImages(fileList) {
 
 function reverseFrames() {
   frames.reverse();
+  framesVersion++;
   clearResult();
   updateUI();
 }
@@ -1503,6 +1513,13 @@ function formatBytes(b) {
   return (b/1048576).toFixed(1) + ' MB';
 }
 
+// Playback touches the filmstrip dozens of times a second; rebuilding its
+// whole DOM each tick was the jank. This just moves the active ring.
+function highlightFilmstrip(idx) {
+  const s = $('filmstrip'); if (!s) return;
+  s.querySelectorAll('.frame-card').forEach(c => c.classList.toggle('active', +c.dataset.idx === idx));
+}
+
 function renderFilmstrip() {
   const s = $('filmstrip'); s.innerHTML = '';
   // Insert marker — glowing vertical line
@@ -1520,7 +1537,7 @@ function renderFilmstrip() {
     c.draggable = true;
     c.dataset.idx = i;
     c.innerHTML = `<img src="${f.src}" alt="${f.name}"><div class="frame-label">${i+1}</div><button class="frame-delete" onclick="event.stopPropagation();removeFrame(${i})">×</button>`;
-    c.onclick = () => { previewIdx = i; stopPlay(); showFrame(i); renderFilmstrip(); };
+    c.onclick = () => { previewIdx = i; stopPlay(); showFrame(i); highlightFilmstrip(i); };
 
     c.ondragstart = e => {
       dragSrcIdx = i;
@@ -1620,6 +1637,7 @@ function renderFilmstrip() {
 function moveFrame(from, to) {
   const [item] = frames.splice(from, 1);
   frames.splice(to, 0, item);
+  framesVersion++;
   clearResult(); updateUI();
 }
 
@@ -1662,6 +1680,13 @@ function showFrame(idx) {
   previewIdx = idx;
   const hasStyle = activePreset !== 'original' || activeElement !== 'none' || Object.values(customValues).some(v => v !== 0);
   if (hasStyle) {
+    const cacheKey = previewStyleKey();
+    if (previewCache.key !== cacheKey) previewCache = { key: cacheKey, urls: new Array(frames.length) };
+    if (previewCache.urls[idx]) {
+      $('previewImg').src = previewCache.urls[idx];
+      $('frameCounter').textContent = `Frame ${idx+1} of ${frames.length}`;
+      return;
+    }
     const img = frames[idx].img;
     const w = Math.min(img.naturalWidth, 600);
     const cropV = $('cropSelect') ? $('cropSelect').value : 'original';
@@ -1686,7 +1711,9 @@ function showFrame(idx) {
     applyStyle(imgData.data, w, h, idx, frames.length);
     presetCtx.putImageData(imgData, 0, 0);
     compositeElement(presetCtx, w, h, idx, frames.length, 'overlay');
-    $('previewImg').src = presetCanvas.toDataURL();
+    const styledUrl = presetCanvas.toDataURL();
+    previewCache.urls[idx] = styledUrl;
+    $('previewImg').src = styledUrl;
   } else {
     $('previewImg').src = frames[idx].src;
   }
@@ -1715,20 +1742,33 @@ function startPlay() {
     const frameIdx = seq[seqIdx];
     const isFirst = frameIdx === 0;
     const isLast = frameIdx === frames.length - 1;
-    let d = speed;
-    if (isFirst && $('holdFirstCheck').checked) d = speed * 3;
-    if (isLast && $('holdLastCheck').checked) d = speed * 3;
+    let d = (typeof liveDelays !== 'undefined' && liveDelays && liveDelays[frameIdx] != null)
+      ? liveDelays[frameIdx] : speed;
+    if (isFirst && $('holdFirstCheck').checked) d = d * 3;
+    if (isLast && $('holdLastCheck').checked) d = d * 3;
+    const boom = $('boomerangCheck').checked && frames.length > 2;
+    if (boom) {
+      const turnPos = frames.length - 1;
+      if (seqIdx === turnPos) d = Math.round(d * 1.8);
+      else if (seqIdx === turnPos - 1 || seqIdx === turnPos + 1) d = Math.round(d * 1.3);
+      if (seqIdx === seq.length - 1) d = Math.round(d * 1.4);
+    }
     return d;
   }
 
   const seq = getSequence();
+  // Preview timing now mirrors export: smart-timing per-frame delays when on,
+  // plus the boomerang turn ease (x1.8 at the turn, x1.3 beside it, x1.4 at
+  // the seam) so what plays is what ships.
+  const liveDelays = ($('smartTimingCheck').checked && frameDiffs.length > 0)
+    ? computeSmartDelays(frameDiffs, speed) : null;
   let seqPos = 0;
 
   function tick() {
     seqPos = (seqPos + 1) % seq.length;
     previewIdx = seq[seqPos];
     showFrame(previewIdx);
-    renderFilmstrip();
+    highlightFilmstrip(previewIdx);
     // Show sequence-aware counter
     const boomerang = $('boomerangCheck').checked && frames.length > 2;
     const label = boomerang
@@ -2046,6 +2086,7 @@ function handleSmartTiming() {
       showHint('\u2726 Analyzing motion \u2014 timing will range from ' + fastest + 'ms to ' + slowest + 'ms');
     }
   }
+  restartPlay();
   updateDuration();
 }
 
