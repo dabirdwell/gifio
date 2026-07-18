@@ -76,6 +76,19 @@ h1 {
   .footer { font-size: 0.7rem; }
   .privacy-note { font-size: 0.65rem; }
 }
+.filmstrip-tools{display:flex;align-items:center;gap:.6rem;margin:.5rem 0 0}
+.ft-btn{font:inherit;font-size:.82rem;padding:.3rem .85rem;border-radius:16px;border:1.5px solid #8b7355;background:#fff;color:#8b7355;cursor:pointer;transition:background .15s,color .15s}
+.ft-btn.on,.ft-btn:hover{background:#8b7355;color:#fff}
+.ft-danger{border-color:#a85442;color:#a85442}
+.ft-danger:hover{background:#a85442;color:#fff}
+.ft-count{font-size:.85rem;color:#8b7355;opacity:.85}
+.frame-card.selected{border-color:#8b7355;box-shadow:0 0 0 3px rgba(139,115,85,.25)}
+.frame-check{position:absolute;top:5px;left:5px;width:19px;height:19px;border-radius:50%;background:#8b7355;color:#fff;font-size:12px;line-height:19px;text-align:center;display:none;pointer-events:none}
+.frame-card.selected .frame-check{display:block}
+.frame-mult{position:absolute;bottom:5px;right:5px;background:rgba(60,45,30,.75);color:#ffe1a8;font-size:10px;font-weight:600;padding:1px 5px;border-radius:5px;pointer-events:none}
+.mult-chips{display:flex;gap:.4rem;flex:1}
+.mult-chips button{font:inherit;font-size:.8rem;padding:.28rem .7rem;border-radius:14px;border:1.5px solid rgba(139,115,85,.5);background:#fff;color:#6b5a45;cursor:pointer}
+.mult-chips button.on{background:#8b7355;border-color:#8b7355;color:#fff}
 </style>
 </head>
 <body>
@@ -148,6 +161,11 @@ h1 {
 
   <!-- Filmstrip -->
   <div id="filmstrip" class="filmstrip" style="display:none"></div>
+  <div id="filmstripTools" class="filmstrip-tools" style="display:none">
+    <button type="button" id="selectModeBtn" class="ft-btn" onclick="toggleSelectMode()" data-tip="Select several frames to remove together. Cmd/Ctrl-click and Shift-click work anytime.">Select</button>
+    <span id="selCount" class="ft-count"></span>
+    <button type="button" id="deleteSelBtn" class="ft-btn ft-danger" style="display:none" onclick="deleteSelected()">Delete</button>
+  </div>
 
   <!-- Preview -->
   <div id="previewArea" class="preview-area" style="display:none">
@@ -199,6 +217,16 @@ h1 {
       <input type="range" id="speedSlider" class="slider" min="50" max="2000" step="50" value="400"
              oninput="speed=+this.value; document.getElementById('speedVal').textContent=this.value+'ms'; restartPlay(); clearResult(); updateDuration(); if($('smartTimingCheck').checked)$('speedVal').textContent=this.value+'ms base'">
       <span id="speedVal" class="control-value">400ms</span>
+    </div>
+    <div class="control-row" id="frameTimingRow" style="display:none">
+      <label class="control-label" data-tip="Timing for one frame only. Auto follows Speed and Smart timing; 2x and 3x hold the pose.">This frame</label>
+      <div class="mult-chips" id="multChips">
+        <button type="button" data-mult="0.5" onclick="setFrameMult(0.5)">&#189;&#215;</button>
+        <button type="button" data-mult="1" onclick="setFrameMult(1)">auto</button>
+        <button type="button" data-mult="2" onclick="setFrameMult(2)">2&#215;</button>
+        <button type="button" data-mult="3" onclick="setFrameMult(3)">3&#215;</button>
+      </div>
+      <span id="frameTimingVal" class="control-value"></span>
     </div>
     <div class="control-row">
       <label class="control-label" data-tip="Output width in pixels. Larger = sharper but bigger file. 400-600px ideal for sharing.">Size</label>
@@ -1217,6 +1245,19 @@ button:focus-visible, select:focus-visible, input[type="range"]:focus-visible { 
   .help-btn { bottom: 14px; right: 14px; width: 38px; height: 38px; font-size: 1.1rem; }
 }
 
+.filmstrip-tools{display:flex;align-items:center;gap:.6rem;margin:.5rem 0 0}
+.ft-btn{font:inherit;font-size:.82rem;padding:.3rem .85rem;border-radius:16px;border:1.5px solid #8b7355;background:#fff;color:#8b7355;cursor:pointer;transition:background .15s,color .15s}
+.ft-btn.on,.ft-btn:hover{background:#8b7355;color:#fff}
+.ft-danger{border-color:#a85442;color:#a85442}
+.ft-danger:hover{background:#a85442;color:#fff}
+.ft-count{font-size:.85rem;color:#8b7355;opacity:.85}
+.frame-card.selected{border-color:#8b7355;box-shadow:0 0 0 3px rgba(139,115,85,.25)}
+.frame-check{position:absolute;top:5px;left:5px;width:19px;height:19px;border-radius:50%;background:#8b7355;color:#fff;font-size:12px;line-height:19px;text-align:center;display:none;pointer-events:none}
+.frame-card.selected .frame-check{display:block}
+.frame-mult{position:absolute;bottom:5px;right:5px;background:rgba(60,45,30,.75);color:#ffe1a8;font-size:10px;font-weight:600;padding:1px 5px;border-radius:5px;pointer-events:none}
+.mult-chips{display:flex;gap:.4rem;flex:1}
+.mult-chips button{font:inherit;font-size:.8rem;padding:.28rem .7rem;border-radius:14px;border:1.5px solid rgba(139,115,85,.5);background:#fff;color:#6b5a45;cursor:pointer}
+.mult-chips button.on{background:#8b7355;border-color:#8b7355;color:#fff}
 </style>
 
 <script>
@@ -1231,6 +1272,10 @@ let speed = 400, outputWidth = 800, previewIdx = 0;
 // bumps on same-length reorders (reverse/move) the key can't see.
 let framesVersion = 0;
 let previewCache = { key: '', urls: [] };
+// Multi-select + per-frame timing freedom
+let selectedFrames = new Set();
+let selectMode = false;
+let lastSelAnchor = null;
 function previewStyleKey() {
   const crop = $('cropSelect') ? $('cropSelect').value : 'original';
   return [activePreset, activeElement, JSON.stringify(customValues), crop, frames.length, framesVersion].join('|');
@@ -1283,8 +1328,10 @@ document.addEventListener('keydown', e => {
   const tag = e.target.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
   if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-  if (e.code === 'ArrowRight') { e.preventDefault(); stopPlay(); previewIdx = (previewIdx + 1) % frames.length; showFrame(previewIdx); renderFilmstrip(); }
-  if (e.code === 'ArrowLeft') { e.preventDefault(); stopPlay(); previewIdx = (previewIdx - 1 + frames.length) % frames.length; showFrame(previewIdx); renderFilmstrip(); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); stopPlay(); previewIdx = (previewIdx + 1) % frames.length; showFrame(previewIdx); renderFilmstrip(); updateFrameTiming(); }
+  if (e.code === 'ArrowLeft') { e.preventDefault(); stopPlay(); previewIdx = (previewIdx - 1 + frames.length) % frames.length; showFrame(previewIdx); renderFilmstrip(); updateFrameTiming(); }
+  if ((e.code === 'Delete' || e.code === 'Backspace') && selectedFrames.size) { e.preventDefault(); deleteSelected(); }
+  if (e.code === 'Escape' && (selectMode || selectedFrames.size)) { e.preventDefault(); clearSelection(); }
 });
 
 function loadImages(fileList) {
@@ -1304,6 +1351,8 @@ function loadImages(fileList) {
     clearResult();
     smartDefaults();
     updateUI();
+    updateSelectionBar();
+    updateFrameTiming();
     startPlay();
   }
   imgs.forEach(file => {
@@ -1319,6 +1368,7 @@ function loadImages(fileList) {
 function reverseFrames() {
   frames.reverse();
   framesVersion++;
+  selectedFrames.clear(); lastSelAnchor = null; updateSelectionBar();
   clearResult();
   updateUI();
 }
@@ -1534,11 +1584,25 @@ function renderFilmstrip() {
 
   frames.forEach((f, i) => {
     const c = document.createElement('div');
-    c.className = 'frame-card' + (i === previewIdx ? ' active' : '');
+    c.className = 'frame-card' + (i === previewIdx ? ' active' : '') + (selectedFrames.has(i) ? ' selected' : '');
     c.draggable = true;
     c.dataset.idx = i;
-    c.innerHTML = `<img src="${f.src}" alt="${f.name}"><div class="frame-label">${i+1}</div><button class="frame-delete" onclick="event.stopPropagation();removeFrame(${i})">×</button>`;
-    c.onclick = () => { previewIdx = i; stopPlay(); showFrame(i); highlightFilmstrip(i); };
+    const multBadge = (f.durMult && f.durMult !== 1) ? `<div class="frame-mult">${f.durMult}&#215;</div>` : '';
+    c.innerHTML = `<img src="${f.src}" alt="${f.name}"><div class="frame-label">${i+1}</div><div class="frame-check">&#10003;</div>${multBadge}<button class="frame-delete" onclick="event.stopPropagation();removeFrame(${i})">×</button>`;
+    c.onclick = (e) => {
+      if (selectMode || e.metaKey || e.ctrlKey || e.shiftKey) {
+        if (e.shiftKey && lastSelAnchor != null) {
+          const [a,b] = [Math.min(lastSelAnchor, i), Math.max(lastSelAnchor, i)];
+          for (let k = a; k <= b; k++) selectedFrames.add(k);
+        } else {
+          selectedFrames.has(i) ? selectedFrames.delete(i) : selectedFrames.add(i);
+          lastSelAnchor = i;
+        }
+        renderFilmstrip(); updateSelectionBar();
+        return;
+      }
+      previewIdx = i; stopPlay(); showFrame(i); highlightFilmstrip(i); updateFrameTiming();
+    };
 
     c.ondragstart = e => {
       dragSrcIdx = i;
@@ -1639,6 +1703,7 @@ function moveFrame(from, to) {
   const [item] = frames.splice(from, 1);
   frames.splice(to, 0, item);
   framesVersion++;
+  selectedFrames.clear(); lastSelAnchor = null; updateSelectionBar();
   clearResult(); updateUI();
 }
 
@@ -1646,13 +1711,65 @@ function removeFrame(idx) {
   const [gone] = frames.splice(idx, 1);
   if (gone && gone.src && gone.src.startsWith('blob:')) URL.revokeObjectURL(gone.src);
   previewIdx = Math.min(previewIdx, Math.max(0, frames.length - 1));
-  clearResult(); updateUI();
+  selectedFrames.clear(); lastSelAnchor = null;
+  clearResult(); updateUI(); updateSelectionBar(); updateFrameTiming();
   if (frames.length < 2) stopPlay();
+}
+
+// --- Multi-select: pick several frames, remove them together ---
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  if (!selectMode) { selectedFrames.clear(); lastSelAnchor = null; }
+  renderFilmstrip(); updateSelectionBar();
+}
+function clearSelection() {
+  selectMode = false; selectedFrames.clear(); lastSelAnchor = null;
+  renderFilmstrip(); updateSelectionBar();
+}
+function updateSelectionBar() {
+  const bar = $('filmstripTools'); if (!bar) return;
+  bar.style.display = frames.length >= 2 ? 'flex' : 'none';
+  const btn = $('selectModeBtn'), del = $('deleteSelBtn'), cnt = $('selCount');
+  const n = selectedFrames.size;
+  btn.textContent = selectMode || n ? 'Done' : 'Select';
+  btn.classList.toggle('on', selectMode);
+  btn.onclick = selectMode || n ? clearSelection : toggleSelectMode;
+  cnt.textContent = n ? `${n} selected` : '';
+  del.style.display = n ? '' : 'none';
+  del.textContent = n > 1 ? `Delete ${n} frames` : 'Delete frame';
+}
+function deleteSelected() {
+  const n = selectedFrames.size;
+  if (!n) return;
+  if (!window.confirm(`Remove ${n} frame${n > 1 ? 's' : ''}?`)) return;
+  [...selectedFrames].sort((a, b) => b - a).forEach(i => {
+    const [gone] = frames.splice(i, 1);
+    if (gone && gone.src && gone.src.startsWith('blob:')) URL.revokeObjectURL(gone.src);
+  });
+  selectedFrames.clear(); lastSelAnchor = null; selectMode = false;
+  previewIdx = Math.min(previewIdx, Math.max(0, frames.length - 1));
+  clearResult(); updateUI(); updateSelectionBar(); updateFrameTiming();
+  if (frames.length < 2) stopPlay();
+}
+
+// --- Per-frame timing freedom: one frame can run at its own pace ---
+function setFrameMult(m) {
+  const f = frames[previewIdx]; if (!f) return;
+  if (m === 1) delete f.durMult; else f.durMult = m;
+  restartPlay(); clearResult(); renderFilmstrip(); updateFrameTiming();
+}
+function updateFrameTiming() {
+  const row = $('frameTimingRow'); if (!row) return;
+  row.style.display = frames.length ? '' : 'none';
+  if (!frames.length) return;
+  const cur = (frames[previewIdx] && frames[previewIdx].durMult) || 1;
+  document.querySelectorAll('#multChips button').forEach(b => b.classList.toggle('on', +b.dataset.mult === cur));
+  $('frameTimingVal').textContent = `frame ${previewIdx + 1}`;
 }
 
 function clearAll() {
   frames.forEach(f => { if (f.src && f.src.startsWith('blob:')) URL.revokeObjectURL(f.src); });
-  frames = []; previewIdx = 0; smartName = 'animation'; activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('titleCardCheck'))$('titleCardCheck').checked=false; if($('titleCardControls'))$('titleCardControls').style.display='none'; if($('titleText'))$('titleText').value=''; detectedFace=null; if($('subtitleText'))$('subtitleText').value=''; if($('cropSelect'))$('cropSelect').value='original'; if(typeof setCrop==='function')setCrop('original'); clearResult(); stopPlay(); updateUI();
+  frames = []; previewIdx = 0; smartName = 'animation'; selectedFrames.clear(); selectMode = false; lastSelAnchor = null; updateSelectionBar(); updateFrameTiming(); activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('titleCardCheck'))$('titleCardCheck').checked=false; if($('titleCardControls'))$('titleCardControls').style.display='none'; if($('titleText'))$('titleText').value=''; detectedFace=null; if($('subtitleText'))$('subtitleText').value=''; if($('cropSelect'))$('cropSelect').value='original'; if(typeof setCrop==='function')setCrop('original'); clearResult(); stopPlay(); updateUI();
   // Reset the clear button state
   const btn = $('clearBtn');
   if (btn) { btn.classList.remove('confirming'); btn.textContent = 'Start over'; }
@@ -1747,6 +1864,8 @@ function startPlay() {
     const isLast = frameIdx === frames.length - 1;
     let d = (typeof liveDelays !== 'undefined' && liveDelays && liveDelays[frameIdx] != null)
       ? liveDelays[frameIdx] : speed;
+    const fm = frames[frameIdx] && frames[frameIdx].durMult;
+    if (fm && fm !== 1) d = Math.round(d * fm);
     if (isFirst && $('holdFirstCheck').checked) d = d * 3;
     if (isLast && $('holdLastCheck').checked) d = d * 3;
     const boom = $('boomerangCheck').checked && frames.length > 2;
@@ -2535,6 +2654,14 @@ async function buildTimingPlan(imgList) {
   } else {
     delays = images.map(() => baseDelay);
   }
+  // Per-frame timing freedom: a frame's multiplier rides every appearance of
+  // it (boomerang copies included), matched by image identity so title cards
+  // and smooth-loop blends stay untouched.
+  for (let k = 0; k < images.length && k < delays.length; k++) {
+    const srcFrame = frames.find(fr => fr.img === images[k]);
+    const fm = srcFrame && srcFrame.durMult;
+    if (fm && fm !== 1) delays[k] = Math.round(delays[k] * fm);
+  }
   const n = images.length;
 
   // Ease boomerang turnaround: slow down at the reversal points
@@ -2585,13 +2712,13 @@ async function buildTimingPlan(imgList) {
 
   // Hold first: triple the first frame's delay
   if ($('holdFirstCheck').checked && images.length >= 2) {
-    delays[0] = baseDelay * 3;
+    delays[0] = Math.round(delays[0] * 3);
   }
 
   // Hold last: triple the last original frame's delay
   if ($('holdLastCheck').checked && images.length >= 2) {
     const lastOrigIdx = doSmooth ? n - 1 : images.length - 1;
-    delays[lastOrigIdx] = baseDelay * 3;
+    delays[lastOrigIdx] = Math.round(delays[lastOrigIdx] * 3);
   }
 
   return { images, delays };
