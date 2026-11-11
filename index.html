@@ -89,6 +89,7 @@ h1 {
 .mult-chips{display:flex;gap:.4rem;flex:1}
 .mult-chips button{font:inherit;font-size:.8rem;padding:.28rem .7rem;border-radius:14px;border:1.5px solid rgba(139,115,85,.5);background:#fff;color:#6b5a45;cursor:pointer}
 .mult-chips button.on{background:#8b7355;border-color:#8b7355;color:#fff}
+.notice{margin:.75rem 0 0;padding:.75rem 1rem;border-radius:12px;background:#fff6e8;border:1px solid #e3c9a0;color:#5c4632;font-size:.9rem;line-height:1.45}
 </style>
 </head>
 <body>
@@ -130,6 +131,7 @@ h1 {
     <div class="drop-hint">From Photos, Files, or Camera</div>
     <input type="file" id="fileInput" accept="image/*" multiple class="file-input-overlay">
   </div>
+  <div id="notice" class="notice" role="status" aria-live="polite" style="display:none"></div>
 
   <!-- Title Card -->
   <div id="titleCardSection" class="title-card-section" style="display:none">
@@ -1334,9 +1336,25 @@ document.addEventListener('keydown', e => {
   if (e.code === 'Escape' && (selectMode || selectedFrames.size)) { e.preventDefault(); clearSelection(); }
 });
 
+// Tell the person, in plain words, when a file could not be used.
+function showNotice(text) {
+  const el = $('notice'); if (!el) return;
+  el.textContent = text;
+  el.style.display = text ? 'block' : 'none';
+}
+function skippedMessage(names) {
+  if (!names.length) return '';
+  const list = names.length <= 3 ? names.join(', ') : names.slice(0, 3).join(', ') + ' and ' + (names.length - 3) + ' more';
+  return 'This browser could not open ' + list + '. Gifio works with JPG, PNG, WebP and GIF pictures. ' +
+    'An iPhone photo (HEIC) opens in Safari; in other browsers, export it as JPG first.';
+}
+
 function loadImages(fileList) {
-  const imgs = [...fileList].filter(f => f.type.startsWith('image/'));
-  if (!imgs.length) return;
+  const all = [...fileList];
+  const imgs = all.filter(f => f.type.startsWith('image/') || /\.(heic|heif|avif)$/i.test(f.name));
+  const skipped = all.filter(f => !imgs.includes(f)).map(f => f.name);
+  showNotice('');
+  if (!imgs.length) { showNotice(skippedMessage(skipped)); return; }
   imgs.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
   let loaded = 0;
   const batch = [];
@@ -1347,6 +1365,8 @@ function loadImages(fileList) {
     if (++loaded !== imgs.length) return;
     batch.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
     frames = frames.concat(batch);
+    showNotice(skippedMessage(skipped));
+    if (!frames.length) return;
     previewIdx = 0;
     clearResult();
     smartDefaults();
@@ -1360,7 +1380,7 @@ function loadImages(fileList) {
     const img = new Image();
     img.onload = () => { batch.push({img, name: file.name, src: url}); done(); };
     // A corrupt file used to hang the load gate forever; now it's skipped.
-    img.onerror = () => { URL.revokeObjectURL(url); done(); };
+    img.onerror = () => { URL.revokeObjectURL(url); skipped.push(file.name); done(); };
     img.src = url;
   });
 }
@@ -1548,8 +1568,11 @@ function updateUI() {
   $('elemSection').style.display = has ? '' : 'none';
   $('titleCardSection').style.display = has ? '' : 'none';
   if (has) { renderPresets(); renderElements(); }
-  $('actionRow').style.display = can && !gifBlobUrl ? '' : 'none';
-  $('clearRow').style.display = can && !gifBlobUrl ? '' : 'none';
+  // One picture is a start, not a dead end: say what the next step is.
+  $('actionRow').style.display = has && !gifBlobUrl ? '' : 'none';
+  $('createBtn').disabled = !can;
+  $('createBtn').textContent = can ? 'Make the GIF' : 'Add one more picture to make a GIF';
+  $('clearRow').style.display = has && !gifBlobUrl ? '' : 'none';
   $('progressWrap').style.display = 'none';
   $('resultArea').style.display = gifBlobUrl ? '' : 'none';
   if (gifBlobUrl) {
@@ -1770,6 +1793,7 @@ function updateFrameTiming() {
 function clearAll() {
   frames.forEach(f => { if (f.src && f.src.startsWith('blob:')) URL.revokeObjectURL(f.src); });
   frames = []; previewIdx = 0; smartName = 'animation'; selectedFrames.clear(); selectMode = false; lastSelAnchor = null; updateSelectionBar(); updateFrameTiming(); activePreset = 'original'; customValues = {brightness:0,contrast:0,saturation:0,warmth:0,vignette:0,grain:0}; if($('smoothLoopCheck'))$('smoothLoopCheck').checked=false; if($('holdFirstCheck'))$('holdFirstCheck').checked=false; if($('holdLastCheck'))$('holdLastCheck').checked=false; if($('smartTimingCheck'))$('smartTimingCheck').checked=false; frameDiffs=[]; activeElement='none'; if($('titleCardCheck'))$('titleCardCheck').checked=false; if($('titleCardControls'))$('titleCardControls').style.display='none'; if($('titleText'))$('titleText').value=''; detectedFace=null; if($('subtitleText'))$('subtitleText').value=''; if($('cropSelect'))$('cropSelect').value='original'; if(typeof setCrop==='function')setCrop('original'); clearResult(); stopPlay(); updateUI();
+  showNotice('');
   // Reset the clear button state
   const btn = $('clearBtn');
   if (btn) { btn.classList.remove('confirming'); btn.textContent = 'Start over'; }
@@ -2886,6 +2910,7 @@ function encodeGIF(imgs, w, h, delay, loop, dither, perFrameDelays) {
 // ═══════════════════════════════════════════════════════
 
 async function generateGif() {
+  if (frames.length < 2) return;
   stopPlay();
   $('actionRow').style.display = 'none';
   $('clearRow').style.display = 'none';
